@@ -1,6 +1,9 @@
 package pt.terrapi.terrapi_api.entities;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -11,18 +14,25 @@ import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import pt.terrapi.terrapi_api.enums.AdminUnitType;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "nuts2")
-public class Nuts2 extends BaseGeoEntity {
+@Table(name = "admin_units")
+public class AdminUnit extends BaseGeoEntity {
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AdminUnitType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id", nullable = false)
-    private Nuts1 parent;
+    @JoinColumn(name = "parent_id")
+    private AdminUnit parent;
 
     @OneToMany(mappedBy = "parent")
-    private List<Nuts3> children = new ArrayList<>();
+    private List<AdminUnit> children = new ArrayList<>();
+
+    private String simplifiedName;
 }

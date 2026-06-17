@@ -1,6 +1,6 @@
 package pt.terrapi.terrapi_api.enums;
 
-public enum AdministrativeLevel {
+public enum AdminUnitType {
     DISTRICT,
     MUNICIPALITY,
     PARISH

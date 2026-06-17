@@ -34,3 +34,6 @@ build/
 
 ### Env ###
 .env
+
+#### Geopackage files ###
+caop

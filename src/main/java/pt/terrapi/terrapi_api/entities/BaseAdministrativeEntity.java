@@ -26,4 +26,8 @@ public abstract class BaseAdministrativeEntity {
 
     @Column(columnDefinition = "geometry(Geometry, 4326)")
     private Geometry polygon;
+
+    private Double areaHa;
+
+    private Double perimeterKm;
 }

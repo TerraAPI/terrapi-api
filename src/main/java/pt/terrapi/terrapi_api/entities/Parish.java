@@ -16,6 +16,8 @@ import lombok.Setter;
 @Table(name = "parishes")
 public class Parish extends BaseAdministrativeEntity {
 
+    private String simplifiedName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "municipality_id", nullable = false)
     private Municipality municipality;

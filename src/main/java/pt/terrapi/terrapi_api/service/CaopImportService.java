@@ -18,12 +18,7 @@ import pt.terrapi.terrapi_api.entities.Nuts1;
 import pt.terrapi.terrapi_api.entities.Nuts2;
 import pt.terrapi.terrapi_api.entities.Nuts3;
 import pt.terrapi.terrapi_api.entities.Parish;
-import pt.terrapi.terrapi_api.mappers.DistrictRowMapper;
-import pt.terrapi.terrapi_api.mappers.MunicipalityRowMapper;
-import pt.terrapi.terrapi_api.mappers.Nuts1RowMapper;
-import pt.terrapi.terrapi_api.mappers.Nuts2RowMapper;
-import pt.terrapi.terrapi_api.mappers.Nuts3RowMapper;
-import pt.terrapi.terrapi_api.mappers.ParishRowMapper;
+import pt.terrapi.terrapi_api.mappers.RowMappers;
 import pt.terrapi.terrapi_api.repository.DistrictRepository;
 import pt.terrapi.terrapi_api.repository.MunicipalityRepository;
 import pt.terrapi.terrapi_api.repository.Nuts1Repository;
@@ -87,9 +82,9 @@ public class CaopImportService {
         var batch = new ArrayList<Nuts1>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, Nuts1RowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts1.columns()))) {
             while (rs.next()) {
-                Nuts1 n = Nuts1RowMapper.mapRow(rs);
+                Nuts1 n = RowMappers.Nuts1.mapRow(rs);
                 batch.add(n);
                 map.put(n.getName(), n);
             }
@@ -107,9 +102,9 @@ public class CaopImportService {
         var batch = new ArrayList<Nuts2>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, Nuts2RowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts2.columns()))) {
             while (rs.next()) {
-                Nuts2 n = Nuts2RowMapper.mapRow(rs, nuts1ByName);
+                Nuts2 n = RowMappers.Nuts2.mapRow(rs, nuts1ByName);
                 batch.add(n);
                 map.put(n.getName(), n);
             }
@@ -126,9 +121,9 @@ public class CaopImportService {
         var batch = new ArrayList<Nuts3>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, Nuts3RowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts3.columns()))) {
             while (rs.next()) {
-                batch.add(Nuts3RowMapper.mapRow(rs, nuts2ByName));
+                batch.add(RowMappers.Nuts3.mapRow(rs, nuts2ByName));
             }
         }
         nuts3Repository.saveAll(batch);
@@ -141,9 +136,9 @@ public class CaopImportService {
         var batch = new ArrayList<District>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, DistrictRowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.District.columns()))) {
             while (rs.next()) {
-                District d = DistrictRowMapper.mapRow(rs);
+                District d = RowMappers.District.mapRow(rs);
                 batch.add(d);
                 map.put(d.getName(), d);
             }
@@ -159,9 +154,9 @@ public class CaopImportService {
         var batch = new ArrayList<Municipality>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, MunicipalityRowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.Municipality.columns()))) {
             while (rs.next()) {
-                Municipality m = MunicipalityRowMapper.mapRow(rs, districtByName);
+                Municipality m = RowMappers.Municipality.mapRow(rs, districtByName);
                 batch.add(m);
                 map.put(m.getName(), m);
             }
@@ -176,9 +171,9 @@ public class CaopImportService {
         var batch = new ArrayList<Parish>();
 
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, ParishRowMapper.columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.Parish.columns()))) {
             while (rs.next()) {
-                batch.add(ParishRowMapper.mapRow(rs, municipalityByName));
+                batch.add(RowMappers.Parish.mapRow(rs, municipalityByName));
             }
         }
         parishRepository.saveAll(batch);

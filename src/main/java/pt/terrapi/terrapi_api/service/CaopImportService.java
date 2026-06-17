@@ -168,7 +168,7 @@ public class CaopImportService {
         try (var stmt = conn.createStatement();
              var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.districtColumns()))) {
             while (rs.next()) {
-                AdminUnit a = RowMappers.AdminUnitMapper.mapRowDistrict(rs);
+                AdminUnit a = RowMappers.AdminUnitMapper.mapRowDistrict(rs, prefix);
                 adminUnitRepository.findByCode(a.getCode()).ifPresent(existing -> a.setId(existing.getId()));
                 batch.add(a);
                 map.put(a.getName(), a);

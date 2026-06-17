@@ -121,9 +121,10 @@ public final class RowMappers {
             return new String[]{"dtmnfr", "freguesia", "municipio", "designacao_simplificada"};
         }
 
-        public static AdminUnit mapRowDistrict(ResultSet rs) throws SQLException {
+        public static AdminUnit mapRowDistrict(ResultSet rs, String prefix) throws SQLException {
             AdminUnit a = new AdminUnit();
-            a.setType(AdminUnitType.DISTRICT);
+            a.setType(prefix.startsWith("ram") || prefix.startsWith("raa")
+                    ? AdminUnitType.ISLAND : AdminUnitType.DISTRICT);
             a.setCode(rs.getString("dt"));
             a.setName(rs.getString("distrito"));
             setGeo(a, rs);

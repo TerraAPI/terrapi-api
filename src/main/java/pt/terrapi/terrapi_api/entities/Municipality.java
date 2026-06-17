@@ -17,7 +17,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Entity
 @Table(name = "municipalities")
-public class Municipality extends BaseAdministrativeEntity {
+public class Municipality extends BaseGeoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "district_id", nullable = false)
@@ -25,4 +25,6 @@ public class Municipality extends BaseAdministrativeEntity {
 
     @OneToMany(mappedBy = "municipality")
     private List<Parish> parishes = new ArrayList<>();
+
+    private String nuts3Code;
 }

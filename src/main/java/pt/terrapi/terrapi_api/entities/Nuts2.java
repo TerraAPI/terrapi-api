@@ -4,7 +4,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,14 +16,13 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "parishes")
-public class Parish extends BaseGeoEntity {
-
-    private String simplifiedName;
+@Table(name = "nuts2")
+public class Nuts2 extends BaseGeoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "municipality_id", nullable = false)
-    private Municipality municipality;
+    @JoinColumn(name = "parent_id", nullable = false)
+    private Nuts1 parent;
 
-    private String nuts3Code;
+    @OneToMany(mappedBy = "parent")
+    private List<Nuts3> children = new ArrayList<>();
 }

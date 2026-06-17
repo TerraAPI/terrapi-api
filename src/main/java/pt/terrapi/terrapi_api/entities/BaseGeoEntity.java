@@ -12,7 +12,7 @@ import org.locationtech.jts.geom.Geometry;
 @Getter
 @Setter
 @MappedSuperclass
-public abstract class BaseAdministrativeEntity {
+public abstract class BaseGeoEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

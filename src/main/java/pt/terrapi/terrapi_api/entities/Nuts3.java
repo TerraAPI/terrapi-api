@@ -13,14 +13,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "parishes")
-public class Parish extends BaseGeoEntity {
-
-    private String simplifiedName;
+@Table(name = "nuts3")
+public class Nuts3 extends BaseGeoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "municipality_id", nullable = false)
-    private Municipality municipality;
-
-    private String nuts3Code;
+    @JoinColumn(name = "parent_id", nullable = false)
+    private Nuts2 parent;
 }

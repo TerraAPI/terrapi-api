@@ -13,11 +13,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "districts")
-public class District extends BaseGeoEntity {
+@Table(name = "nuts1")
+public class Nuts1 extends BaseGeoEntity {
 
-    @OneToMany(mappedBy = "district")
-    private List<Municipality> municipalities = new ArrayList<>();
-
-    private String nuts1Code;
+    @OneToMany(mappedBy = "parent")
+    private List<Nuts2> children = new ArrayList<>();
 }

@@ -38,6 +38,21 @@ public class CaopImportService {
     private final ParishRepository parishRepository;
 
     @Transactional
+    public ImportResult importFolder(String folderPath) {
+        File folder = new File(folderPath);
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".gpkg"));
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("No .gpkg files found in " + folderPath);
+        }
+
+        ImportResult total = new ImportResult(0, 0, 0, 0, 0, 0);
+        for (File file : files) {
+            total = total.add(importGpkg(file.getAbsolutePath()));
+        }
+        return total;
+    }
+
+    @Transactional
     public ImportResult importGpkg(String filePath) {
         File file = new File(filePath);
         String url = "jdbc:sqlite:" + file.getAbsolutePath();
@@ -181,7 +196,7 @@ public class CaopImportService {
     }
 
     private String selectSql(String table, String[] columns) {
-        var sb = new StringBuilder();
+        var sb = new StringBuilder("SELECT ");
         for (int i = 0; i < columns.length; i++) {
             if (i > 0) sb.append(", ");
             sb.append(columns[i]);

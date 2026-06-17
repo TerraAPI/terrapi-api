@@ -6,12 +6,6 @@ import java.util.Map;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.WKBReader;
 import pt.terrapi.terrapi_api.entities.BaseGeoEntity;
-import pt.terrapi.terrapi_api.entities.District;
-import pt.terrapi.terrapi_api.entities.Municipality;
-import pt.terrapi.terrapi_api.entities.Nuts1;
-import pt.terrapi.terrapi_api.entities.Nuts2;
-import pt.terrapi.terrapi_api.entities.Nuts3;
-import pt.terrapi.terrapi_api.entities.Parish;
 
 public final class RowMappers {
 
@@ -37,11 +31,28 @@ public final class RowMappers {
 
     private static byte[] stripGpkgHeader(byte[] gpkgBlob) {
         int flags = gpkgBlob[3] & 0xFF;
+
         if ((flags & 0x10) != 0) {
             return new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
         }
-        byte[] wkb = new byte[gpkgBlob.length - 8];
-        System.arraycopy(gpkgBlob, 8, wkb, 0, wkb.length);
+
+        int offset = 8;
+
+        if ((flags & 0x20) != 0) {
+            offset += 4;
+        }
+
+        int env = (flags >> 1) & 0x07;
+        offset += switch (env) {
+            case 0 -> 0;
+            case 1 -> 32;
+            case 2, 3 -> 48;
+            case 4 -> 64;
+            default -> 0;
+        };
+
+        byte[] wkb = new byte[gpkgBlob.length - offset];
+        System.arraycopy(gpkgBlob, offset, wkb, 0, wkb.length);
         return wkb;
     }
 

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgis/postgis:latest
+    container_name: terrapi-db
+    environment:
+      POSTGRES_DB: terrapi
+      POSTGRES_USER: terrapi
+      POSTGRES_PASSWORD: terrapi
+    ports:
+      - "5445:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

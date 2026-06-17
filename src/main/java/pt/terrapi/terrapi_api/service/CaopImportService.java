@@ -7,11 +7,13 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.dto.ImportResult;
+import pt.terrapi.terrapi_api.entities.BaseGeoEntity;
 import pt.terrapi.terrapi_api.entities.District;
 import pt.terrapi.terrapi_api.entities.Municipality;
 import pt.terrapi.terrapi_api.entities.Nuts1;
@@ -19,6 +21,7 @@ import pt.terrapi.terrapi_api.entities.Nuts2;
 import pt.terrapi.terrapi_api.entities.Nuts3;
 import pt.terrapi.terrapi_api.entities.Parish;
 import pt.terrapi.terrapi_api.mappers.RowMappers;
+import pt.terrapi.terrapi_api.repository.BaseGeoRepository;
 import pt.terrapi.terrapi_api.repository.DistrictRepository;
 import pt.terrapi.terrapi_api.repository.MunicipalityRepository;
 import pt.terrapi.terrapi_api.repository.Nuts1Repository;
@@ -100,6 +103,7 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts1.columns()))) {
             while (rs.next()) {
                 Nuts1 n = RowMappers.Nuts1.mapRow(rs);
+                nuts1Repository.findByCode(n.getCode()).ifPresent(existing -> n.setId(existing.getId()));
                 batch.add(n);
                 map.put(n.getName(), n);
             }
@@ -120,6 +124,7 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts2.columns()))) {
             while (rs.next()) {
                 Nuts2 n = RowMappers.Nuts2.mapRow(rs, nuts1ByName);
+                nuts2Repository.findByCode(n.getCode()).ifPresent(existing -> n.setId(existing.getId()));
                 batch.add(n);
                 map.put(n.getName(), n);
             }
@@ -138,7 +143,9 @@ public class CaopImportService {
         try (var stmt = conn.createStatement();
              var rs = stmt.executeQuery(selectSql(table, RowMappers.Nuts3.columns()))) {
             while (rs.next()) {
-                batch.add(RowMappers.Nuts3.mapRow(rs, nuts2ByName));
+                Nuts3 n = RowMappers.Nuts3.mapRow(rs, nuts2ByName);
+                nuts3Repository.findByCode(n.getCode()).ifPresent(existing -> n.setId(existing.getId()));
+                batch.add(n);
             }
         }
         nuts3Repository.saveAll(batch);
@@ -154,6 +161,7 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.District.columns()))) {
             while (rs.next()) {
                 District d = RowMappers.District.mapRow(rs);
+                districtRepository.findByCode(d.getCode()).ifPresent(existing -> d.setId(existing.getId()));
                 batch.add(d);
                 map.put(d.getName(), d);
             }
@@ -172,6 +180,7 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.Municipality.columns()))) {
             while (rs.next()) {
                 Municipality m = RowMappers.Municipality.mapRow(rs, districtByName);
+                municipalityRepository.findByCode(m.getCode()).ifPresent(existing -> m.setId(existing.getId()));
                 batch.add(m);
                 map.put(m.getName(), m);
             }
@@ -188,7 +197,9 @@ public class CaopImportService {
         try (var stmt = conn.createStatement();
              var rs = stmt.executeQuery(selectSql(table, RowMappers.Parish.columns()))) {
             while (rs.next()) {
-                batch.add(RowMappers.Parish.mapRow(rs, municipalityByName));
+                Parish p = RowMappers.Parish.mapRow(rs, municipalityByName);
+                parishRepository.findByCode(p.getCode()).ifPresent(existing -> p.setId(existing.getId()));
+                batch.add(p);
             }
         }
         parishRepository.saveAll(batch);

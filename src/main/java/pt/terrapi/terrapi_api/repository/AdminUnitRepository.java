@@ -3,15 +3,11 @@ package pt.terrapi.terrapi_api.repository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import pt.terrapi.terrapi_api.entities.AdminUnit;
 import pt.terrapi.terrapi_api.enums.AdminUnitType;
 
-public interface AdminUnitRepository extends JpaRepository<AdminUnit, Long> {
+public interface AdminUnitRepository extends JpaRepository<AdminUnit, String> {
     Optional<AdminUnit> findByCode(String code);
     List<AdminUnit> findByType(AdminUnitType type);
-    List<AdminUnit> findByParentId(Long parentId);
-
-    @Query("SELECT a.code, a.id FROM AdminUnit a")
-    List<Object[]> findAllCodesAndIds();
+    List<AdminUnit> findByParentCode(String parentCode);
 }

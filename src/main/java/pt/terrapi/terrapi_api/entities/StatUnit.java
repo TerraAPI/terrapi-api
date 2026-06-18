@@ -28,7 +28,7 @@ public class StatUnit extends BaseGeoEntity {
     private StatUnitLevel level;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
+    @JoinColumn(name = "parent_code")
     private StatUnit parent;
 
     @OneToMany(mappedBy = "parent")

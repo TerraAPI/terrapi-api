@@ -16,7 +16,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc.batch_size: 50
-        order_inserts: true
   flyway:
     enabled: true
     locations: classpath:db/migration

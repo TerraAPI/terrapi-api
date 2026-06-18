@@ -1,8 +1,6 @@
 package pt.terrapi.terrapi_api.entities;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
@@ -15,10 +13,7 @@ import org.locationtech.jts.geom.Geometry;
 public abstract class BaseGeoEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true)
+    @Column(length = 6, nullable = false, unique = true)
     private String code;
 
     @Column(nullable = false)

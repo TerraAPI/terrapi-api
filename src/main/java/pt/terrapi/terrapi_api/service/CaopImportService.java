@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,24 +48,13 @@ public class CaopImportService {
                 throw new IllegalArgumentException("No administrative tables found with recognised prefix");
             }
 
-            Map<String, Long> statIds = loadExistingIds(statUnitRepository.findAllCodesAndIds());
-            Map<String, Long> adminIds = loadExistingIds(adminUnitRepository.findAllCodesAndIds());
-
-            int statCount = importStatUnits(conn, prefix, statIds);
-            int adminCount = importAdminUnits(conn, prefix, adminIds);
+            int statCount = importStatUnits(conn, prefix);
+            int adminCount = importAdminUnits(conn, prefix);
 
             return new ImportResult(adminCount, statCount);
         } catch (Exception e) {
             throw new RuntimeException("Failed to import GPKG: " + e.getMessage(), e);
         }
-    }
-
-    private static Map<String, Long> loadExistingIds(List<Object[]> rows) {
-        var map = new HashMap<String, Long>();
-        for (Object[] row : rows) {
-            map.put((String) row[0], (Long) row[1]);
-        }
-        return map;
     }
 
     private static String detectPrefix(Connection conn) throws Exception {
@@ -83,15 +71,14 @@ public class CaopImportService {
 
     // --- Stat units ---
 
-    private int importStatUnits(Connection conn, String prefix, Map<String, Long> ids) throws Exception {
-        var nuts1ByName = importNuts1(conn, prefix, ids);
-        var nuts2ByName = importNuts2(conn, prefix, ids, nuts1ByName);
-        int nuts3Count = importNuts3(conn, prefix, ids, nuts2ByName);
+    private int importStatUnits(Connection conn, String prefix) throws Exception {
+        var nuts1ByName = importNuts1(conn, prefix);
+        var nuts2ByName = importNuts2(conn, prefix, nuts1ByName);
+        int nuts3Count = importNuts3(conn, prefix, nuts2ByName);
         return nuts1ByName.size() + nuts2ByName.size() + nuts3Count;
     }
 
-    private Map<String, StatUnit> importNuts1(Connection conn, String prefix,
-                                               Map<String, Long> ids) throws Exception {
+    private Map<String, StatUnit> importNuts1(Connection conn, String prefix) throws Exception {
         String table = prefix + "nuts1";
         if (!tableExists(conn, table)) return Map.of();
         var batch = new ArrayList<StatUnit>();
@@ -100,18 +87,16 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts1Columns()))) {
             while (rs.next()) {
                 StatUnit s = RowMappers.StatUnitMapper.mapRowNuts1(rs);
-                Long id = ids.get(s.getCode());
-                if (id != null) s.setId(id);
                 batch.add(s);
                 byName.put(s.getName(), s);
             }
         }
         statUnitRepository.saveAll(batch);
+        statUnitRepository.flush();
         return byName;
     }
 
     private Map<String, StatUnit> importNuts2(Connection conn, String prefix,
-                                               Map<String, Long> ids,
                                                Map<String, StatUnit> nuts1ByName) throws Exception {
         String table = prefix + "nuts2";
         if (!tableExists(conn, table)) return Map.of();
@@ -121,18 +106,16 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts2Columns()))) {
             while (rs.next()) {
                 StatUnit s = RowMappers.StatUnitMapper.mapRowNuts2(rs, nuts1ByName);
-                Long id = ids.get(s.getCode());
-                if (id != null) s.setId(id);
                 batch.add(s);
                 byName.put(s.getName(), s);
             }
         }
         statUnitRepository.saveAll(batch);
+        statUnitRepository.flush();
         return byName;
     }
 
     private int importNuts3(Connection conn, String prefix,
-                             Map<String, Long> ids,
                              Map<String, StatUnit> nuts2ByName) throws Exception {
         String table = prefix + "nuts3";
         if (!tableExists(conn, table)) return 0;
@@ -141,8 +124,6 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts3Columns()))) {
             while (rs.next()) {
                 StatUnit s = RowMappers.StatUnitMapper.mapRowNuts3(rs, nuts2ByName);
-                Long id = ids.get(s.getCode());
-                if (id != null) s.setId(id);
                 batch.add(s);
             }
         }
@@ -152,15 +133,14 @@ public class CaopImportService {
 
     // --- Admin units ---
 
-    private int importAdminUnits(Connection conn, String prefix, Map<String, Long> ids) throws Exception {
-        var districtByName = importDistricts(conn, prefix, ids);
-        var municipalityByName = importMunicipalities(conn, prefix, ids, districtByName);
-        int parishCount = importParishes(conn, prefix, ids, municipalityByName);
+    private int importAdminUnits(Connection conn, String prefix) throws Exception {
+        var districtByName = importDistricts(conn, prefix);
+        var municipalityByName = importMunicipalities(conn, prefix, districtByName);
+        int parishCount = importParishes(conn, prefix, municipalityByName);
         return districtByName.size() + municipalityByName.size() + parishCount;
     }
 
-    private Map<String, AdminUnit> importDistricts(Connection conn, String prefix,
-                                                    Map<String, Long> ids) throws Exception {
+    private Map<String, AdminUnit> importDistricts(Connection conn, String prefix) throws Exception {
         String table = prefix + "distritos";
         var batch = new ArrayList<AdminUnit>();
         var byName = new HashMap<String, AdminUnit>();
@@ -168,18 +148,16 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.districtColumns()))) {
             while (rs.next()) {
                 AdminUnit a = RowMappers.AdminUnitMapper.mapRowDistrict(rs, prefix);
-                Long id = ids.get(a.getCode());
-                if (id != null) a.setId(id);
                 batch.add(a);
                 byName.put(a.getName(), a);
             }
         }
         adminUnitRepository.saveAll(batch);
+        adminUnitRepository.flush();
         return byName;
     }
 
     private Map<String, AdminUnit> importMunicipalities(Connection conn, String prefix,
-                                                         Map<String, Long> ids,
                                                          Map<String, AdminUnit> districtByName) throws Exception {
         String table = prefix + "municipios";
         var batch = new ArrayList<AdminUnit>();
@@ -188,18 +166,16 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.municipalityColumns()))) {
             while (rs.next()) {
                 AdminUnit a = RowMappers.AdminUnitMapper.mapRowMunicipality(rs, districtByName);
-                Long id = ids.get(a.getCode());
-                if (id != null) a.setId(id);
                 batch.add(a);
                 byName.put(a.getName(), a);
             }
         }
         adminUnitRepository.saveAll(batch);
+        adminUnitRepository.flush();
         return byName;
     }
 
     private int importParishes(Connection conn, String prefix,
-                                Map<String, Long> ids,
                                 Map<String, AdminUnit> municipalityByName) throws Exception {
         String table = prefix + "freguesias";
         if (!tableExists(conn, table)) return 0;
@@ -208,8 +184,6 @@ public class CaopImportService {
              var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.parishColumns()))) {
             while (rs.next()) {
                 AdminUnit a = RowMappers.AdminUnitMapper.mapRowParish(rs, municipalityByName);
-                Long id = ids.get(a.getCode());
-                if (id != null) a.setId(id);
                 batch.add(a);
             }
         }

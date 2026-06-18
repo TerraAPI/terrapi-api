@@ -36,7 +36,7 @@ public class GeoUnit {
     private String name;
 
     @Column(columnDefinition = "geometry(Geometry, 4326)")
-    private Geometry polygon;
+    private Geometry geometry;
 
     private Double areaHa;
 

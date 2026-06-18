@@ -26,8 +26,6 @@ terrapi:
   precision:
     lod:
       PARISH:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 50
         - lod: 2
@@ -35,8 +33,6 @@ terrapi:
         - lod: 3
           tolerance: 800
       MUNICIPALITY:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 100
         - lod: 2
@@ -44,8 +40,6 @@ terrapi:
         - lod: 3
           tolerance: 2000
       DISTRICT:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 300
         - lod: 2
@@ -53,8 +47,6 @@ terrapi:
         - lod: 3
           tolerance: 5000
       ISLAND:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 100
         - lod: 2
@@ -62,8 +54,6 @@ terrapi:
         - lod: 3
           tolerance: 2000
       NUTS1:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 500
         - lod: 2
@@ -71,8 +61,6 @@ terrapi:
         - lod: 3
           tolerance: 10000
       NUTS2:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 300
         - lod: 2
@@ -80,8 +68,6 @@ terrapi:
         - lod: 3
           tolerance: 5000
       NUTS3:
-        - lod: 0
-          tolerance: 0
         - lod: 1
           tolerance: 200
         - lod: 2

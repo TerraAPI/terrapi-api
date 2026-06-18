@@ -15,7 +15,7 @@ public final class RowMappers {
     private RowMappers() {}
 
     private static void setGeo(GeoUnit e, ResultSet rs) throws SQLException {
-        e.setPolygon(readGeometry(rs.getBytes("geom")));
+        e.setGeometry(readGeometry(rs.getBytes("geom")));
         e.setAreaHa(rs.getDouble("area_ha"));
         e.setPerimeterKm(rs.getDouble("perimetro_km"));
     }

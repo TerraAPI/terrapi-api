@@ -152,12 +152,12 @@ public class PrecisionGenerationService {
                 SELECT u.code,
                        ST_AsBinary(
                            ST_SetSRID(
-                               ST_SimplifyPreserveTopology(ST_SetSRID(u.polygon, 3763), ?),
+                               ST_SimplifyPreserveTopology(ST_SetSRID(u.geometry, 3763), ?),
                                4326
                            )
                        ) AS geometry,
                        ST_NPoints(
-                           ST_SimplifyPreserveTopology(ST_SetSRID(u.polygon, 3763), ?)
+                           ST_SimplifyPreserveTopology(ST_SetSRID(u.geometry, 3763), ?)
                        ) AS vertex_count
                 FROM geo_units u
                 WHERE u.type = ?

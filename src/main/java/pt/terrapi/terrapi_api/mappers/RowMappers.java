@@ -64,11 +64,11 @@ public final class RowMappers {
         }
 
         public static String[] municipalityColumns() {
-            return new String[]{"dtmn", "municipio", "distrito_ilha"};
+            return new String[]{"dtmn", "municipio", "distrito_ilha", "nuts3_cod"};
         }
 
         public static String[] parishColumns() {
-            return new String[]{"dtmnfr", "freguesia", "municipio", "designacao_simplificada"};
+            return new String[]{"dtmnfr", "freguesia", "municipio", "designacao_simplificada", "nuts3_cod"};
         }
 
         public static String[] nuts1Columns() {
@@ -100,6 +100,7 @@ public final class RowMappers {
             u.setCode(rs.getString("dtmn"));
             u.setName(rs.getString("municipio"));
             u.setParent(districtByName.get(rs.getString("distrito_ilha")));
+            u.setNuts3Code(rs.getString("nuts3_cod"));
             setGeo(u, rs);
             return u;
         }
@@ -112,6 +113,7 @@ public final class RowMappers {
             u.setName(rs.getString("freguesia"));
             u.setParent(municipalityByName.get(rs.getString("municipio")));
             u.setSimplifiedName(rs.getString("designacao_simplificada"));
+            u.setNuts3Code(rs.getString("nuts3_cod"));
             setGeo(u, rs);
             return u;
         }

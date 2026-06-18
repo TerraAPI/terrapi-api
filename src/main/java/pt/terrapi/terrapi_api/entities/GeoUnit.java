@@ -53,4 +53,7 @@ public class GeoUnit {
     private List<GeoUnit> children = new ArrayList<>();
 
     private String simplifiedName;
+
+    @Column(length = 5)
+    private String nuts3Code;
 }

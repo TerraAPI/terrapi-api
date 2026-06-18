@@ -7,13 +7,13 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.AdminUnit;
-import pt.terrapi.terrapi_api.entities.BaseGeoEntity;
 import pt.terrapi.terrapi_api.entities.StatUnit;
 import pt.terrapi.terrapi_api.mappers.RowMappers;
 import pt.terrapi.terrapi_api.repository.AdminUnitRepository;
@@ -49,8 +49,8 @@ public class CaopImportService {
                 throw new IllegalArgumentException("No administrative tables found with recognised prefix");
             }
 
-            Map<String, Long> statIds = loadExistingIds(statUnitRepository.findAll());
-            Map<String, Long> adminIds = loadExistingIds(adminUnitRepository.findAll());
+            Map<String, Long> statIds = loadExistingIds(statUnitRepository.findAllCodesAndIds());
+            Map<String, Long> adminIds = loadExistingIds(adminUnitRepository.findAllCodesAndIds());
 
             int statCount = importStatUnits(conn, prefix, statIds);
             int adminCount = importAdminUnits(conn, prefix, adminIds);
@@ -61,10 +61,10 @@ public class CaopImportService {
         }
     }
 
-    private static Map<String, Long> loadExistingIds(Iterable<? extends BaseGeoEntity> entities) {
+    private static Map<String, Long> loadExistingIds(List<Object[]> rows) {
         var map = new HashMap<String, Long>();
-        for (var e : entities) {
-            map.put(e.getCode(), e.getId());
+        for (Object[] row : rows) {
+            map.put((String) row[0], (Long) row[1]);
         }
         return map;
     }

@@ -21,3 +21,47 @@ spring:
     locations: classpath:db/migration
   config:
     import: optional:file:.env[.properties]
+
+terrapi:
+  precision:
+    lod:
+      PARISH:
+        - lod: 0
+          tolerance: 0
+        - lod: 1
+          tolerance: 50
+        - lod: 2
+          tolerance: 200
+        - lod: 3
+          tolerance: 800
+      MUNICIPALITY:
+        - lod: 0
+          tolerance: 0
+        - lod: 1
+          tolerance: 100
+        - lod: 2
+          tolerance: 500
+        - lod: 3
+          tolerance: 2000
+      DISTRICT:
+        - lod: 0
+          tolerance: 0
+        - lod: 1
+          tolerance: 300
+        - lod: 2
+          tolerance: 1000
+        - lod: 3
+          tolerance: 5000
+      ISLAND:
+        - lod: 0
+          tolerance: 0
+        - lod: 1
+          tolerance: 100
+        - lod: 2
+          tolerance: 500
+        - lod: 3
+          tolerance: 2000
+    validation:
+      max-null-pct: 1.0
+      max-invalid-pct: 1.0
+      max-empty-pct: 1.0

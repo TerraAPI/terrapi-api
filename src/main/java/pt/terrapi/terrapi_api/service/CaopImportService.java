@@ -9,21 +9,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.AdminUnit;
 import pt.terrapi.terrapi_api.entities.StatUnit;
+import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.mappers.RowMappers;
 import pt.terrapi.terrapi_api.repository.AdminUnitRepository;
 import pt.terrapi.terrapi_api.repository.StatUnitRepository;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CaopImportService {
 
     private final StatUnitRepository statUnitRepository;
     private final AdminUnitRepository adminUnitRepository;
+    private final PrecisionGenerationService precisionGenerationService;
 
     @Transactional
     public ImportResult importFolder(String folderPath) {
@@ -35,13 +39,30 @@ public class CaopImportService {
 
         ImportResult total = new ImportResult(0, 0);
         for (File file : files) {
-            total = total.add(importGpkg(file.getAbsolutePath()));
+            total = total.add(doImport(file.getAbsolutePath()));
         }
+        triggerGeneration();
         return total;
     }
 
     @Transactional
     public ImportResult importGpkg(String filePath) {
+        ImportResult result = doImport(filePath);
+        triggerGeneration();
+        return result;
+    }
+
+    private void triggerGeneration() {
+        try {
+            adminUnitRepository.flush();
+            statUnitRepository.flush();
+            precisionGenerationService.generate(GenerationType.ALL);
+        } catch (Exception e) {
+            log.error("Precision generation failed after import", e);
+        }
+    }
+
+    private ImportResult doImport(String filePath) {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + filePath)) {
             String prefix = detectPrefix(conn);
             if (prefix == null) {

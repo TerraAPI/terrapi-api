@@ -1,0 +1,9 @@
+package pt.terrapi.terrapi_api.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
+
+import java.util.UUID;
+
+public interface PrecisionGenerationRepository extends JpaRepository<PrecisionGeneration, UUID> {
+}

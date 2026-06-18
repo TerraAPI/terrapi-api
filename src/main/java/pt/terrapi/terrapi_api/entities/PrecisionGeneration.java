@@ -1,0 +1,65 @@
+package pt.terrapi.terrapi_api.entities;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import pt.terrapi.terrapi_api.enums.GenerationStatus;
+import pt.terrapi.terrapi_api.enums.GenerationType;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "precision_generations")
+public class PrecisionGeneration {
+
+    @Id
+    @Column(name = "generation_id")
+    private UUID generationId;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
+
+    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private GenerationStatus status;
+
+    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private GenerationType type;
+
+    @Column(name = "total_units")
+    private int totalUnits;
+
+    @Column(name = "total_lods")
+    private int totalLods;
+
+    @Column(name = "invalid_geometries")
+    private int invalidGeometries;
+
+    @Column(name = "null_geometries")
+    private int nullGeometries;
+
+    @Column(name = "row_count")
+    private int rowCount;
+
+    @PrePersist
+    void setDefaults() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        if (generationId == null) {
+            generationId = UUID.randomUUID();
+        }
+    }
+}

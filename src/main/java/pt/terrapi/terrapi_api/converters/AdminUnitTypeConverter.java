@@ -10,12 +10,12 @@ public class AdminUnitTypeConverter implements AttributeConverter<AdminUnitType,
     @Override
     public Integer convertToDatabaseColumn(AdminUnitType type) {
         if (type == null) return null;
-        return type.ordinal();
+        return type.getValue();
     }
 
     @Override
-    public AdminUnitType convertToEntityAttribute(Integer ordinal) {
-        if (ordinal == null) return null;
-        return AdminUnitType.values()[ordinal];
+    public AdminUnitType convertToEntityAttribute(Integer value) {
+        if (value == null) return null;
+        return AdminUnitType.fromValue(value);
     }
 }

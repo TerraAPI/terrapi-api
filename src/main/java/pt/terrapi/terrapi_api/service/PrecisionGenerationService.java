@@ -11,12 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.entities.AdminUnitPrecision;
+import pt.terrapi.terrapi_api.entities.GeoUnitPrecision;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.repository.AdminUnitPrecisionRepository;
+import pt.terrapi.terrapi_api.repository.GeoUnitPrecisionRepository;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
 import java.time.Instant;
@@ -34,11 +34,12 @@ public class PrecisionGenerationService {
     private final JdbcTemplate jdbcTemplate;
     private final PrecisionPolicyService policyService;
     private final PrecisionGenerationRepository generationRepository;
-    private final AdminUnitPrecisionRepository precisionRepository;
+    private final GeoUnitPrecisionRepository precisionRepository;
     private final PrecisionProperties properties;
 
     @Transactional
     public GenerationResult generate(GenerationType generationType) {
+        long t0 = System.currentTimeMillis();
         UUID generationId = UUID.randomUUID();
 
         PrecisionGeneration gen = new PrecisionGeneration();
@@ -48,8 +49,10 @@ public class PrecisionGenerationService {
         gen.setType(generationType);
         generationRepository.saveAndFlush(gen);
 
+        log.info("Generating precision (type={}, genId={})", generationType, generationId);
+
         try {
-            return doGenerate(generationId, gen, generationType);
+            return doGenerate(generationId, gen, generationType, t0);
         } catch (Exception e) {
             log.error("Generation {} crashed", generationId, e);
             gen.setStatus(GenerationStatus.FAILED);
@@ -60,15 +63,18 @@ public class PrecisionGenerationService {
     }
 
     private GenerationResult doGenerate(UUID generationId, PrecisionGeneration gen,
-                                        GenerationType generationType) {
+                                        GenerationType generationType, long t0) {
         List<GeoUnitType> targetTypes = resolveTypes(generationType);
 
-        List<AdminUnitPrecision> precisions = new ArrayList<>();
+        List<GeoUnitPrecision> precisions = new ArrayList<>();
         long expectedRowCount = 0;
         int totalLodDefs = 0;
 
+        log.info("  Computing LODs...");
         for (GeoUnitType type : targetTypes) {
             List<LodLevel> levels = policyService.getLodLevels(type);
+            if (levels.isEmpty()) continue;
+
             totalLodDefs += levels.size();
             Long unitCount = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM geo_units WHERE type = ?",
@@ -76,9 +82,12 @@ public class PrecisionGenerationService {
             long count = unitCount != null ? unitCount : 0;
             expectedRowCount += count * levels.size();
 
+            long tType = System.currentTimeMillis();
             for (LodLevel level : levels) {
                 precisions.addAll(computeLod(type, level, generationId));
             }
+            log.info("    {}: {} units \u00d7 {} LODs = {} rows ({} ms)",
+                    type, count, levels.size(), count * levels.size(), System.currentTimeMillis() - tType);
         }
 
         int totalRows = precisions.size();
@@ -86,7 +95,8 @@ public class PrecisionGenerationService {
         int invalidCount = 0;
         int emptyCount = 0;
 
-        for (AdminUnitPrecision p : precisions) {
+        log.info("  Validating {} geometries...", totalRows);
+        for (GeoUnitPrecision p : precisions) {
             Geometry g = p.getGeometry();
             if (g == null) {
                 nullCount++;
@@ -118,9 +128,9 @@ public class PrecisionGenerationService {
             return new GenerationResult(generationId, GenerationStatus.FAILED, totalRows);
         }
 
+        log.info("  Deprecating old rows, saving {} new rows...", totalRows);
         precisionRepository.deprecateActiveByTypes(targetTypes);
         precisionRepository.flush();
-
         precisionRepository.saveAll(precisions);
 
         gen.setStatus(GenerationStatus.SUCCESS);
@@ -131,13 +141,13 @@ public class PrecisionGenerationService {
         gen.setTotalLods(totalLodDefs);
         generationRepository.save(gen);
 
-        log.info("Generation {} SUCCESS — {} rows over {} unit types, {} LOD levels",
-                generationId, totalRows, targetTypes.size(), totalLodDefs);
+        log.info("Generation {} SUCCESS — {} rows in {} ms",
+                generationId, totalRows, System.currentTimeMillis() - t0);
 
         return new GenerationResult(generationId, GenerationStatus.SUCCESS, totalRows);
     }
 
-    private List<AdminUnitPrecision> computeLod(GeoUnitType type, LodLevel level, UUID generationId) {
+    private List<GeoUnitPrecision> computeLod(GeoUnitType type, LodLevel level, UUID generationId) {
         String sql = """
                 SELECT u.code,
                        ST_AsBinary(
@@ -154,7 +164,7 @@ public class PrecisionGenerationService {
                 """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            AdminUnitPrecision p = new AdminUnitPrecision();
+            GeoUnitPrecision p = new GeoUnitPrecision();
             p.setGeoUnitCode(rs.getString("code"));
             p.setType(type);
             p.setLod(level.lod());

@@ -8,10 +8,14 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GenerationType;
@@ -26,6 +30,7 @@ public class CaopImportService {
 
     private final GeoUnitRepository geoUnitRepository;
     private final PrecisionGenerationService precisionGenerationService;
+    private final TaskExecutor taskExecutor;
 
     @Transactional
     public ImportResult importFolder(String folderPath) {
@@ -35,10 +40,13 @@ public class CaopImportService {
             throw new IllegalArgumentException("No .gpkg files found in " + folderPath);
         }
 
+        log.info("Importing {} .gpkg files from {}", files.length, folderPath);
         ImportResult total = ImportResult.empty();
         for (File file : files) {
             total = total.add(doImport(file.getAbsolutePath()));
         }
+        log.info("Import finished — {}", total.counts());
+
         triggerGeneration();
         return total;
     }
@@ -46,20 +54,30 @@ public class CaopImportService {
     @Transactional
     public ImportResult importGpkg(String filePath) {
         ImportResult result = doImport(filePath);
+        log.info("Import finished — {}", result.counts());
+
         triggerGeneration();
         return result;
     }
 
     private void triggerGeneration() {
-        try {
-            geoUnitRepository.flush();
-            precisionGenerationService.generate(GenerationType.ALL);
-        } catch (Exception e) {
-            log.error("Precision generation failed after import", e);
-        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        log.info("Precision generation started (async)");
+                        precisionGenerationService.generate(GenerationType.ALL);
+                    } catch (Exception e) {
+                        log.error("Precision generation failed after import", e);
+                    }
+                }, taskExecutor);
+            }
+        });
     }
 
     private ImportResult doImport(String filePath) {
+        long t0 = System.currentTimeMillis();
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + filePath)) {
             String prefix = detectPrefix(conn);
             if (prefix == null) {
@@ -68,9 +86,17 @@ public class CaopImportService {
 
             Map<String, Integer> counts = new HashMap<>();
 
+            long t1 = System.currentTimeMillis();
             importNuts1(conn, prefix, counts);
-            importDistricts(conn, prefix, counts);
+            int statCount = counts.values().stream().mapToInt(Integer::intValue).sum();
+            log.info("  Stat units imported: {} records ({} ms)", statCount, System.currentTimeMillis() - t1);
 
+            long t2 = System.currentTimeMillis();
+            importDistricts(conn, prefix, counts);
+            int adminCount = counts.values().stream().mapToInt(Integer::intValue).sum() - statCount;
+            log.info("  Admin units imported: {} records ({} ms)", adminCount, System.currentTimeMillis() - t2);
+
+            log.info("  Total: {} records in {} ms", statCount + adminCount, System.currentTimeMillis() - t0);
             return new ImportResult(counts);
         } catch (Exception e) {
             throw new RuntimeException("Failed to import GPKG: " + e.getMessage(), e);
@@ -108,7 +134,6 @@ public class CaopImportService {
         geoUnitRepository.flush();
         counts.merge(GeoUnitType.NUTS1.name(), batch.size(), Integer::sum);
 
-        // chain to children
         importNuts2(conn, prefix, counts, byName);
     }
 

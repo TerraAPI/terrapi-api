@@ -21,11 +21,11 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "admin_unit_precisions", indexes = {
-        @Index(name = "idx_ap_code_lod_status", columnList = "geo_unit_code, lod, status"),
-        @Index(name = "idx_ap_generation_id", columnList = "generation_id")
+@Table(name = "geo_unit_precisions", indexes = {
+        @Index(name = "idx_gp_code_lod_status", columnList = "geo_unit_code, lod, status"),
+        @Index(name = "idx_gp_generation_id", columnList = "generation_id")
 })
-public class AdminUnitPrecision {
+public class GeoUnitPrecision {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

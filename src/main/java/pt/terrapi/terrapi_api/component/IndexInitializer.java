@@ -17,7 +17,7 @@ public class IndexInitializer {
     public void init() {
         try {
             jdbcTemplate.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_ap_geometry ON admin_unit_precisions USING GIST (geometry)");
+                    "CREATE INDEX IF NOT EXISTS idx_gp_geometry ON geo_unit_precisions USING GIST (geometry)");
         } catch (Exception e) {
             log.warn("Could not create GiST index (table may not exist yet): {}", e.getMessage());
         }

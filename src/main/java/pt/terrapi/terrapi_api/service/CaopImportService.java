@@ -13,20 +13,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.dto.ImportResult;
-import pt.terrapi.terrapi_api.entities.AdminUnit;
-import pt.terrapi.terrapi_api.entities.StatUnit;
+import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GenerationType;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.mappers.RowMappers;
-import pt.terrapi.terrapi_api.repository.AdminUnitRepository;
-import pt.terrapi.terrapi_api.repository.StatUnitRepository;
+import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CaopImportService {
 
-    private final StatUnitRepository statUnitRepository;
-    private final AdminUnitRepository adminUnitRepository;
+    private final GeoUnitRepository geoUnitRepository;
     private final PrecisionGenerationService precisionGenerationService;
 
     @Transactional
@@ -37,7 +35,7 @@ public class CaopImportService {
             throw new IllegalArgumentException("No .gpkg files found in " + folderPath);
         }
 
-        ImportResult total = new ImportResult(0, 0);
+        ImportResult total = ImportResult.empty();
         for (File file : files) {
             total = total.add(doImport(file.getAbsolutePath()));
         }
@@ -54,8 +52,7 @@ public class CaopImportService {
 
     private void triggerGeneration() {
         try {
-            adminUnitRepository.flush();
-            statUnitRepository.flush();
+            geoUnitRepository.flush();
             precisionGenerationService.generate(GenerationType.ALL);
         } catch (Exception e) {
             log.error("Precision generation failed after import", e);
@@ -69,10 +66,12 @@ public class CaopImportService {
                 throw new IllegalArgumentException("No administrative tables found with recognised prefix");
             }
 
-            int statCount = importStatUnits(conn, prefix);
-            int adminCount = importAdminUnits(conn, prefix);
+            Map<String, Integer> counts = new HashMap<>();
 
-            return new ImportResult(adminCount, statCount);
+            importNuts1(conn, prefix, counts);
+            importDistricts(conn, prefix, counts);
+
+            return new ImportResult(counts);
         } catch (Exception e) {
             throw new RuntimeException("Failed to import GPKG: " + e.getMessage(), e);
         }
@@ -90,126 +89,124 @@ public class CaopImportService {
         return null;
     }
 
-    // --- Stat units ---
+    // --- Stat units (NUTS) ---
 
-    private int importStatUnits(Connection conn, String prefix) throws Exception {
-        var nuts1ByName = importNuts1(conn, prefix);
-        var nuts2ByName = importNuts2(conn, prefix, nuts1ByName);
-        int nuts3Count = importNuts3(conn, prefix, nuts2ByName);
-        return nuts1ByName.size() + nuts2ByName.size() + nuts3Count;
-    }
-
-    private Map<String, StatUnit> importNuts1(Connection conn, String prefix) throws Exception {
+    private void importNuts1(Connection conn, String prefix, Map<String, Integer> counts) throws Exception {
         String table = prefix + "nuts1";
-        if (!tableExists(conn, table)) return Map.of();
-        var batch = new ArrayList<StatUnit>();
-        var byName = new HashMap<String, StatUnit>();
+        if (!tableExists(conn, table)) return;
+        var batch = new ArrayList<GeoUnit>();
+        var byName = new HashMap<String, GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts1Columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.nuts1Columns()))) {
             while (rs.next()) {
-                StatUnit s = RowMappers.StatUnitMapper.mapRowNuts1(rs);
-                batch.add(s);
-                byName.put(s.getName(), s);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowNuts1(rs);
+                batch.add(u);
+                byName.put(u.getName(), u);
             }
         }
-        statUnitRepository.saveAll(batch);
-        statUnitRepository.flush();
-        return byName;
+        geoUnitRepository.saveAll(batch);
+        geoUnitRepository.flush();
+        counts.merge(GeoUnitType.NUTS1.name(), batch.size(), Integer::sum);
+
+        // chain to children
+        importNuts2(conn, prefix, counts, byName);
     }
 
-    private Map<String, StatUnit> importNuts2(Connection conn, String prefix,
-                                               Map<String, StatUnit> nuts1ByName) throws Exception {
+    private void importNuts2(Connection conn, String prefix, Map<String, Integer> counts,
+                             Map<String, GeoUnit> nuts1ByName) throws Exception {
         String table = prefix + "nuts2";
-        if (!tableExists(conn, table)) return Map.of();
-        var batch = new ArrayList<StatUnit>();
-        var byName = new HashMap<String, StatUnit>();
+        if (!tableExists(conn, table)) return;
+        var batch = new ArrayList<GeoUnit>();
+        var byName = new HashMap<String, GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts2Columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.nuts2Columns()))) {
             while (rs.next()) {
-                StatUnit s = RowMappers.StatUnitMapper.mapRowNuts2(rs, nuts1ByName);
-                batch.add(s);
-                byName.put(s.getName(), s);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowNuts2(rs, nuts1ByName);
+                batch.add(u);
+                byName.put(u.getName(), u);
             }
         }
-        statUnitRepository.saveAll(batch);
-        statUnitRepository.flush();
-        return byName;
+        geoUnitRepository.saveAll(batch);
+        geoUnitRepository.flush();
+        counts.merge(GeoUnitType.NUTS2.name(), batch.size(), Integer::sum);
+
+        importNuts3(conn, prefix, counts, byName);
     }
 
-    private int importNuts3(Connection conn, String prefix,
-                             Map<String, StatUnit> nuts2ByName) throws Exception {
+    private void importNuts3(Connection conn, String prefix, Map<String, Integer> counts,
+                             Map<String, GeoUnit> nuts2ByName) throws Exception {
         String table = prefix + "nuts3";
-        if (!tableExists(conn, table)) return 0;
-        var batch = new ArrayList<StatUnit>();
+        if (!tableExists(conn, table)) return;
+        var batch = new ArrayList<GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.StatUnitMapper.nuts3Columns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.nuts3Columns()))) {
             while (rs.next()) {
-                StatUnit s = RowMappers.StatUnitMapper.mapRowNuts3(rs, nuts2ByName);
-                batch.add(s);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowNuts3(rs, nuts2ByName);
+                batch.add(u);
             }
         }
-        statUnitRepository.saveAll(batch);
-        return batch.size();
+        geoUnitRepository.saveAll(batch);
+        counts.merge(GeoUnitType.NUTS3.name(), batch.size(), Integer::sum);
     }
 
     // --- Admin units ---
 
-    private int importAdminUnits(Connection conn, String prefix) throws Exception {
-        var districtByName = importDistricts(conn, prefix);
-        var municipalityByName = importMunicipalities(conn, prefix, districtByName);
-        int parishCount = importParishes(conn, prefix, municipalityByName);
-        return districtByName.size() + municipalityByName.size() + parishCount;
-    }
-
-    private Map<String, AdminUnit> importDistricts(Connection conn, String prefix) throws Exception {
+    private void importDistricts(Connection conn, String prefix, Map<String, Integer> counts) throws Exception {
         String table = prefix + "distritos";
-        var batch = new ArrayList<AdminUnit>();
-        var byName = new HashMap<String, AdminUnit>();
+        var batch = new ArrayList<GeoUnit>();
+        var byName = new HashMap<String, GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.districtColumns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.districtColumns()))) {
             while (rs.next()) {
-                AdminUnit a = RowMappers.AdminUnitMapper.mapRowDistrict(rs, prefix);
-                batch.add(a);
-                byName.put(a.getName(), a);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowDistrict(rs, prefix);
+                batch.add(u);
+                byName.put(u.getName(), u);
             }
         }
-        adminUnitRepository.saveAll(batch);
-        adminUnitRepository.flush();
-        return byName;
+        geoUnitRepository.saveAll(batch);
+        geoUnitRepository.flush();
+
+        for (GeoUnit u : batch) {
+            counts.merge(u.getType().name(), 1, Integer::sum);
+        }
+
+        importMunicipalities(conn, prefix, counts, byName);
     }
 
-    private Map<String, AdminUnit> importMunicipalities(Connection conn, String prefix,
-                                                         Map<String, AdminUnit> districtByName) throws Exception {
+    private void importMunicipalities(Connection conn, String prefix, Map<String, Integer> counts,
+                                      Map<String, GeoUnit> districtByName) throws Exception {
         String table = prefix + "municipios";
-        var batch = new ArrayList<AdminUnit>();
-        var byName = new HashMap<String, AdminUnit>();
+        var batch = new ArrayList<GeoUnit>();
+        var byName = new HashMap<String, GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.municipalityColumns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.municipalityColumns()))) {
             while (rs.next()) {
-                AdminUnit a = RowMappers.AdminUnitMapper.mapRowMunicipality(rs, districtByName);
-                batch.add(a);
-                byName.put(a.getName(), a);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowMunicipality(rs, districtByName);
+                batch.add(u);
+                byName.put(u.getName(), u);
             }
         }
-        adminUnitRepository.saveAll(batch);
-        adminUnitRepository.flush();
-        return byName;
+        geoUnitRepository.saveAll(batch);
+        geoUnitRepository.flush();
+        counts.merge(GeoUnitType.MUNICIPALITY.name(), batch.size(), Integer::sum);
+
+        importParishes(conn, prefix, counts, byName);
     }
 
-    private int importParishes(Connection conn, String prefix,
-                                Map<String, AdminUnit> municipalityByName) throws Exception {
+    private void importParishes(Connection conn, String prefix, Map<String, Integer> counts,
+                                Map<String, GeoUnit> municipalityByName) throws Exception {
         String table = prefix + "freguesias";
-        if (!tableExists(conn, table)) return 0;
-        var batch = new ArrayList<AdminUnit>();
+        if (!tableExists(conn, table)) return;
+        var batch = new ArrayList<GeoUnit>();
         try (var stmt = conn.createStatement();
-             var rs = stmt.executeQuery(selectSql(table, RowMappers.AdminUnitMapper.parishColumns()))) {
+             var rs = stmt.executeQuery(selectSql(table, RowMappers.GeoUnitMapper.parishColumns()))) {
             while (rs.next()) {
-                AdminUnit a = RowMappers.AdminUnitMapper.mapRowParish(rs, municipalityByName);
-                batch.add(a);
+                GeoUnit u = RowMappers.GeoUnitMapper.mapRowParish(rs, municipalityByName);
+                batch.add(u);
             }
         }
-        adminUnitRepository.saveAll(batch);
-        return batch.size();
+        geoUnitRepository.saveAll(batch);
+        counts.merge(GeoUnitType.PARISH.name(), batch.size(), Integer::sum);
     }
 
     // --- Helpers ---

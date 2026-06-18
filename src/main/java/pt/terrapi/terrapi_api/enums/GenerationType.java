@@ -5,5 +5,8 @@ public enum GenerationType {
     DISTRICT,
     MUNICIPALITY,
     PARISH,
-    ISLAND
+    ISLAND,
+    NUTS1,
+    NUTS2,
+    NUTS3
 }

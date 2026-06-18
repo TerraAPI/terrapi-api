@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
-import pt.terrapi.terrapi_api.enums.AdminUnitType;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 import java.util.List;
 
@@ -14,7 +14,7 @@ public class PrecisionPolicyService {
 
     private final PrecisionProperties properties;
 
-    public List<LodLevel> getLodLevels(AdminUnitType type) {
+    public List<LodLevel> getLodLevels(GeoUnitType type) {
         return properties.getLod().get(type.name());
     }
 }

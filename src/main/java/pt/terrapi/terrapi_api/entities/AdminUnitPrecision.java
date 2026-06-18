@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.locationtech.jts.geom.Geometry;
-import pt.terrapi.terrapi_api.enums.AdminUnitType;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -22,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @Table(name = "admin_unit_precisions", indexes = {
-        @Index(name = "idx_ap_code_lod_status", columnList = "admin_unit_code, lod, status"),
+        @Index(name = "idx_ap_code_lod_status", columnList = "geo_unit_code, lod, status"),
         @Index(name = "idx_ap_generation_id", columnList = "generation_id")
 })
 public class AdminUnitPrecision {
@@ -31,11 +31,11 @@ public class AdminUnitPrecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "admin_unit_code", length = 6, nullable = false)
-    private String adminUnitCode;
+    @Column(name = "geo_unit_code", length = 6, nullable = false)
+    private String geoUnitCode;
 
     @Column(nullable = false)
-    private AdminUnitType type;
+    private GeoUnitType type;
 
     @Column(nullable = false)
     private int lod;

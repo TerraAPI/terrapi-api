@@ -13,9 +13,9 @@ import pt.terrapi.terrapi_api.config.PrecisionProperties;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.entities.AdminUnitPrecision;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
-import pt.terrapi.terrapi_api.enums.AdminUnitType;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.AdminUnitPrecisionRepository;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
@@ -61,17 +61,17 @@ public class PrecisionGenerationService {
 
     private GenerationResult doGenerate(UUID generationId, PrecisionGeneration gen,
                                         GenerationType generationType) {
-        List<AdminUnitType> targetTypes = resolveTypes(generationType);
+        List<GeoUnitType> targetTypes = resolveTypes(generationType);
 
         List<AdminUnitPrecision> precisions = new ArrayList<>();
         long expectedRowCount = 0;
         int totalLodDefs = 0;
 
-        for (AdminUnitType type : targetTypes) {
+        for (GeoUnitType type : targetTypes) {
             List<LodLevel> levels = policyService.getLodLevels(type);
             totalLodDefs += levels.size();
             Long unitCount = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM admin_units WHERE type = ?",
+                    "SELECT COUNT(*) FROM geo_units WHERE type = ?",
                     Long.class, type.getValue());
             long count = unitCount != null ? unitCount : 0;
             expectedRowCount += count * levels.size();
@@ -137,25 +137,25 @@ public class PrecisionGenerationService {
         return new GenerationResult(generationId, GenerationStatus.SUCCESS, totalRows);
     }
 
-    private List<AdminUnitPrecision> computeLod(AdminUnitType type, LodLevel level, UUID generationId) {
+    private List<AdminUnitPrecision> computeLod(GeoUnitType type, LodLevel level, UUID generationId) {
         String sql = """
-                SELECT a.code,
+                SELECT u.code,
                        ST_AsBinary(
                            ST_SetSRID(
-                               ST_SimplifyPreserveTopology(ST_SetSRID(a.polygon, 3763), ?),
+                               ST_SimplifyPreserveTopology(ST_SetSRID(u.polygon, 3763), ?),
                                4326
                            )
                        ) AS geometry,
                        ST_NPoints(
-                           ST_SimplifyPreserveTopology(ST_SetSRID(a.polygon, 3763), ?)
+                           ST_SimplifyPreserveTopology(ST_SetSRID(u.polygon, 3763), ?)
                        ) AS vertex_count
-                FROM admin_units a
-                WHERE a.type = ?
+                FROM geo_units u
+                WHERE u.type = ?
                 """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             AdminUnitPrecision p = new AdminUnitPrecision();
-            p.setAdminUnitCode(rs.getString("code"));
+            p.setGeoUnitCode(rs.getString("code"));
             p.setType(type);
             p.setLod(level.lod());
             p.setToleranceM(level.tolerance());
@@ -169,7 +169,7 @@ public class PrecisionGenerationService {
                 try {
                     p.setGeometry(wkbReader.read(wkb));
                 } catch (ParseException e) {
-                    throw new RuntimeException("Failed to parse WKB for admin unit " + p.getAdminUnitCode(), e);
+                    throw new RuntimeException("Failed to parse WKB for geo unit " + p.getGeoUnitCode(), e);
                 }
             }
 
@@ -177,10 +177,10 @@ public class PrecisionGenerationService {
         }, level.tolerance(), level.tolerance(), type.getValue());
     }
 
-    private static List<AdminUnitType> resolveTypes(GenerationType generationType) {
+    private static List<GeoUnitType> resolveTypes(GenerationType generationType) {
         if (generationType == GenerationType.ALL) {
-            return List.of(AdminUnitType.values());
+            return List.of(GeoUnitType.values());
         }
-        return List.of(AdminUnitType.valueOf(generationType.name()));
+        return List.of(GeoUnitType.valueOf(generationType.name()));
     }
 }

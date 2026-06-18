@@ -5,11 +5,8 @@ import java.sql.SQLException;
 import java.util.Map;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.WKBReader;
-import pt.terrapi.terrapi_api.entities.AdminUnit;
-import pt.terrapi.terrapi_api.entities.BaseGeoEntity;
-import pt.terrapi.terrapi_api.entities.StatUnit;
-import pt.terrapi.terrapi_api.enums.AdminUnitType;
-import pt.terrapi.terrapi_api.enums.StatUnitLevel;
+import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public final class RowMappers {
 
@@ -17,7 +14,7 @@ public final class RowMappers {
 
     private RowMappers() {}
 
-    private static void setGeo(BaseGeoEntity e, ResultSet rs) throws SQLException {
+    private static void setGeo(GeoUnit e, ResultSet rs) throws SQLException {
         e.setPolygon(readGeometry(rs.getBytes("geom")));
         e.setAreaHa(rs.getDouble("area_ha"));
         e.setPerimeterKm(rs.getDouble("perimetro_km"));
@@ -59,55 +56,8 @@ public final class RowMappers {
         return wkb;
     }
 
-    public static final class StatUnitMapper {
-        private StatUnitMapper() {}
-
-        public static String[] nuts1Columns() {
-            return new String[]{"codigo", "nuts1"};
-        }
-
-        public static String[] nuts2Columns() {
-            return new String[]{"codigo", "nuts2", "nuts1"};
-        }
-
-        public static String[] nuts3Columns() {
-            return new String[]{"codigo", "nuts3", "nuts2"};
-        }
-
-        public static StatUnit mapRowNuts1(ResultSet rs) throws SQLException {
-            StatUnit s = new StatUnit();
-            s.setLevel(StatUnitLevel.NUTS1);
-            s.setCode(rs.getString("codigo"));
-            s.setName(rs.getString("nuts1"));
-            setGeo(s, rs);
-            return s;
-        }
-
-        public static StatUnit mapRowNuts2(ResultSet rs,
-                Map<String, StatUnit> nuts1ByName) throws SQLException {
-            StatUnit s = new StatUnit();
-            s.setLevel(StatUnitLevel.NUTS2);
-            s.setCode(rs.getString("codigo"));
-            s.setName(rs.getString("nuts2"));
-            s.setParent(nuts1ByName.get(rs.getString("nuts1")));
-            setGeo(s, rs);
-            return s;
-        }
-
-        public static StatUnit mapRowNuts3(ResultSet rs,
-                Map<String, StatUnit> nuts2ByName) throws SQLException {
-            StatUnit s = new StatUnit();
-            s.setLevel(StatUnitLevel.NUTS3);
-            s.setCode(rs.getString("codigo"));
-            s.setName(rs.getString("nuts3"));
-            s.setParent(nuts2ByName.get(rs.getString("nuts2")));
-            setGeo(s, rs);
-            return s;
-        }
-    }
-
-    public static final class AdminUnitMapper {
-        private AdminUnitMapper() {}
+    public static final class GeoUnitMapper {
+        private GeoUnitMapper() {}
 
         public static String[] districtColumns() {
             return new String[]{"dt", "distrito"};
@@ -121,37 +71,80 @@ public final class RowMappers {
             return new String[]{"dtmnfr", "freguesia", "municipio", "designacao_simplificada"};
         }
 
-        public static AdminUnit mapRowDistrict(ResultSet rs, String prefix) throws SQLException {
-            AdminUnit a = new AdminUnit();
-            a.setType(prefix.startsWith("ram") || prefix.startsWith("raa")
-                    ? AdminUnitType.ISLAND : AdminUnitType.DISTRICT);
-            a.setCode(rs.getString("dt"));
-            a.setName(rs.getString("distrito"));
-            setGeo(a, rs);
-            return a;
+        public static String[] nuts1Columns() {
+            return new String[]{"codigo", "nuts1"};
         }
 
-        public static AdminUnit mapRowMunicipality(ResultSet rs,
-                Map<String, AdminUnit> districtByName) throws SQLException {
-            AdminUnit a = new AdminUnit();
-            a.setType(AdminUnitType.MUNICIPALITY);
-            a.setCode(rs.getString("dtmn"));
-            a.setName(rs.getString("municipio"));
-            a.setParent(districtByName.get(rs.getString("distrito_ilha")));
-            setGeo(a, rs);
-            return a;
+        public static String[] nuts2Columns() {
+            return new String[]{"codigo", "nuts2", "nuts1"};
         }
 
-        public static AdminUnit mapRowParish(ResultSet rs,
-                Map<String, AdminUnit> municipalityByName) throws SQLException {
-            AdminUnit a = new AdminUnit();
-            a.setType(AdminUnitType.PARISH);
-            a.setCode(rs.getString("dtmnfr"));
-            a.setName(rs.getString("freguesia"));
-            a.setParent(municipalityByName.get(rs.getString("municipio")));
-            a.setSimplifiedName(rs.getString("designacao_simplificada"));
-            setGeo(a, rs);
-            return a;
+        public static String[] nuts3Columns() {
+            return new String[]{"codigo", "nuts3", "nuts2"};
+        }
+
+        public static GeoUnit mapRowDistrict(ResultSet rs, String prefix) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(prefix.startsWith("ram") || prefix.startsWith("raa")
+                    ? GeoUnitType.ISLAND : GeoUnitType.DISTRICT);
+            u.setCode(rs.getString("dt"));
+            u.setName(rs.getString("distrito"));
+            setGeo(u, rs);
+            return u;
+        }
+
+        public static GeoUnit mapRowMunicipality(ResultSet rs,
+                Map<String, GeoUnit> districtByName) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(GeoUnitType.MUNICIPALITY);
+            u.setCode(rs.getString("dtmn"));
+            u.setName(rs.getString("municipio"));
+            u.setParent(districtByName.get(rs.getString("distrito_ilha")));
+            setGeo(u, rs);
+            return u;
+        }
+
+        public static GeoUnit mapRowParish(ResultSet rs,
+                Map<String, GeoUnit> municipalityByName) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(GeoUnitType.PARISH);
+            u.setCode(rs.getString("dtmnfr"));
+            u.setName(rs.getString("freguesia"));
+            u.setParent(municipalityByName.get(rs.getString("municipio")));
+            u.setSimplifiedName(rs.getString("designacao_simplificada"));
+            setGeo(u, rs);
+            return u;
+        }
+
+        public static GeoUnit mapRowNuts1(ResultSet rs) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(GeoUnitType.NUTS1);
+            u.setCode(rs.getString("codigo"));
+            u.setName(rs.getString("nuts1"));
+            setGeo(u, rs);
+            return u;
+        }
+
+        public static GeoUnit mapRowNuts2(ResultSet rs,
+                Map<String, GeoUnit> nuts1ByName) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(GeoUnitType.NUTS2);
+            u.setCode(rs.getString("codigo"));
+            u.setName(rs.getString("nuts2"));
+            u.setParent(nuts1ByName.get(rs.getString("nuts1")));
+            setGeo(u, rs);
+            return u;
+        }
+
+        public static GeoUnit mapRowNuts3(ResultSet rs,
+                Map<String, GeoUnit> nuts2ByName) throws SQLException {
+            GeoUnit u = new GeoUnit();
+            u.setType(GeoUnitType.NUTS3);
+            u.setCode(rs.getString("codigo"));
+            u.setName(rs.getString("nuts3"));
+            u.setParent(nuts2ByName.get(rs.getString("nuts2")));
+            setGeo(u, rs);
+            return u;
         }
     }
 }

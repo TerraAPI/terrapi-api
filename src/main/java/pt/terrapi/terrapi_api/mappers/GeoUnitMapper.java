@@ -29,8 +29,7 @@ public final class GeoUnitMapper {
     public static GeoUnitMinimalDto toMinimalDto(GeoUnit entity) {
         return new GeoUnitMinimalDto(
                 entity.getCode(),
-                entity.getName(),
-                entity.getSimplifiedName(),
+                entity.getSimplifiedName() != null ? entity.getSimplifiedName() : entity.getName(),
                 entity.getType(),
                 entity.getParent() != null ? entity.getParent().getCode() : null
         );

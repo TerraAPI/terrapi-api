@@ -7,10 +7,8 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 public record GeoUnitMinimalDto(
         @Schema(description = "Codigo da unidade (DICOFRE)")
         String code,
-        @Schema(description = "Nome da unidade")
+        @Schema(description = "Nome (simplificado se disponivel, caso contrario nome original)")
         String name,
-        @Schema(description = "Nome simplificado")
-        String simplifiedName,
         @Schema(description = "Tipo de unidade geografica")
         GeoUnitType type,
         @Schema(description = "Codigo da unidade pai")

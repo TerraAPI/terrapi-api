@@ -29,14 +29,20 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
     @Query("""
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
-                gu.code, gu.name, gu.simplifiedName, gu.type, gu.parent.code)
+                gu.code,
+                CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
+                gu.type,
+                gu.parent.code)
             FROM GeoUnit gu
             """)
     List<GeoUnitMinimalDto> findAllMinimal();
 
     @Query("""
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
-                gu.code, gu.name, gu.simplifiedName, gu.type, gu.parent.code)
+                gu.code,
+                CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
+                gu.type,
+                gu.parent.code)
             FROM GeoUnit gu
             WHERE gu.type = :type
             """)
@@ -44,7 +50,10 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
     @Query("""
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
-                gu.code, gu.name, gu.simplifiedName, gu.type, gu.parent.code)
+                gu.code,
+                CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
+                gu.type,
+                gu.parent.code)
             FROM GeoUnit gu
             WHERE gu.parent.code = :parentCode
             """)

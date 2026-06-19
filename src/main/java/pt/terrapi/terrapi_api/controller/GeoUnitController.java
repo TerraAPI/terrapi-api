@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.dto.GeoUnitDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitDetailedDto;
 import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.GeoUnitService;
@@ -28,7 +28,7 @@ public class GeoUnitController {
 
     @GetMapping
     @Operation(summary = "Listar unidades geograficas, opcionalmente filtradas por tipo")
-    public ResponseEntity<List<GeoUnitDto>> findAll(
+    public ResponseEntity<List<GeoUnitDetailedDto>> findAll(
             @Parameter(description = "Filtrar por tipo: DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
             @RequestParam(required = false) GeoUnitType type) {
         if (type != null) {
@@ -39,7 +39,7 @@ public class GeoUnitController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Obter unidade geografica por codigo")
-    public ResponseEntity<GeoUnitDto> findById(
+    public ResponseEntity<GeoUnitDetailedDto> findById(
             @Parameter(description = "Codigo da unidade geografica (DICOFRE)")
             @PathVariable String id) {
         return geoUnitService.findById(id)
@@ -49,7 +49,7 @@ public class GeoUnitController {
 
     @GetMapping("/{id}/children")
     @Operation(summary = "Listar unidades filhas (descendentes diretos)")
-    public ResponseEntity<List<GeoUnitDto>> findChildren(
+    public ResponseEntity<List<GeoUnitDetailedDto>> findChildren(
             @Parameter(description = "Codigo da unidade geografica pai")
             @PathVariable String id) {
         return ResponseEntity.ok(geoUnitService.findChildren(id));
@@ -57,7 +57,7 @@ public class GeoUnitController {
 
     @GetMapping("/{id}/ancestors")
     @Operation(summary = "Listar unidades ancestrais")
-    public ResponseEntity<List<GeoUnitDto>> findAncestors(
+    public ResponseEntity<List<GeoUnitDetailedDto>> findAncestors(
             @Parameter(description = "Codigo da unidade geografica")
             @PathVariable String id,
             @Parameter(description = "Ambito: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")

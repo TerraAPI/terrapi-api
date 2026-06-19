@@ -1,15 +1,15 @@
 package pt.terrapi.terrapi_api.mappers;
 
 import java.util.List;
-import pt.terrapi.terrapi_api.dto.GeoUnitDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitDetailedDto;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 
 public final class GeoUnitMapper {
 
     private GeoUnitMapper() {}
 
-    public static GeoUnitDto toDto(GeoUnit entity) {
-        return new GeoUnitDto(
+    public static GeoUnitDetailedDto toDto(GeoUnit entity) {
+        return new GeoUnitDetailedDto(
                 entity.getCode(),
                 entity.getName(),
                 entity.getSimplifiedName(),
@@ -21,17 +21,17 @@ public final class GeoUnitMapper {
         );
     }
 
-    public static List<GeoUnitDto> toDtoList(List<GeoUnit> entities) {
+    public static List<GeoUnitDetailedDto> toDtoList(List<GeoUnit> entities) {
         return entities.stream().map(GeoUnitMapper::toDto).toList();
     }
 
-    public static GeoUnit toEntity(GeoUnitDto dto) {
+    public static GeoUnit toEntity(GeoUnitDetailedDto dto) {
         GeoUnit entity = new GeoUnit();
         applyTo(dto, entity);
         return entity;
     }
 
-    public static void applyTo(GeoUnitDto dto, GeoUnit target) {
+    public static void applyTo(GeoUnitDetailedDto dto, GeoUnit target) {
         target.setCode(dto.code());
         target.setName(dto.name());
         target.setSimplifiedName(dto.simplifiedName());

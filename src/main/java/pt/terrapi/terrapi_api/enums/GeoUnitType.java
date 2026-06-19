@@ -7,10 +7,10 @@ public enum GeoUnitType {
     DISTRICT(1, GeoUnitCategory.ADMINISTRATIVE),
     MUNICIPALITY(2, GeoUnitCategory.ADMINISTRATIVE),
     PARISH(3, GeoUnitCategory.ADMINISTRATIVE),
-    ISLAND(9, GeoUnitCategory.SPECIAL),
-    NUTS1(10, GeoUnitCategory.STATISTICAL),
-    NUTS2(11, GeoUnitCategory.STATISTICAL),
-    NUTS3(12, GeoUnitCategory.STATISTICAL);
+    ISLAND(7, GeoUnitCategory.SPECIAL),
+    NUTS1(11, GeoUnitCategory.STATISTICAL),
+    NUTS2(12, GeoUnitCategory.STATISTICAL),
+    NUTS3(13, GeoUnitCategory.STATISTICAL);
 
     private final int value;
     private final GeoUnitCategory category;

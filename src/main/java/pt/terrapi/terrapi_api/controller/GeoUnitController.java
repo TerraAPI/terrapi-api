@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailedDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto;
 import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.GeoUnitService;
@@ -28,7 +29,7 @@ public class GeoUnitController {
 
     @GetMapping
     @Operation(summary = "Listar unidades geograficas, opcionalmente filtradas por tipo")
-    public ResponseEntity<List<GeoUnitDetailedDto>> findAll(
+    public ResponseEntity<List<GeoUnitMinimalDto>> findAll(
             @Parameter(description = "Filtrar por tipo: DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
             @RequestParam(required = false) GeoUnitType type) {
         if (type != null) {
@@ -49,7 +50,7 @@ public class GeoUnitController {
 
     @GetMapping("/{id}/children")
     @Operation(summary = "Listar unidades filhas (descendentes diretos)")
-    public ResponseEntity<List<GeoUnitDetailedDto>> findChildren(
+    public ResponseEntity<List<GeoUnitMinimalDto>> findChildren(
             @Parameter(description = "Codigo da unidade geografica pai")
             @PathVariable String id) {
         return ResponseEntity.ok(geoUnitService.findChildren(id));
@@ -57,7 +58,7 @@ public class GeoUnitController {
 
     @GetMapping("/{id}/ancestors")
     @Operation(summary = "Listar unidades ancestrais")
-    public ResponseEntity<List<GeoUnitDetailedDto>> findAncestors(
+    public ResponseEntity<List<GeoUnitMinimalDto>> findAncestors(
             @Parameter(description = "Codigo da unidade geografica")
             @PathVariable String id,
             @Parameter(description = "Ambito: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")

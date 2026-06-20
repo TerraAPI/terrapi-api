@@ -50,11 +50,6 @@ public class GeoUnitQueryService {
         return geoUnitRepository.findSummaryListByType(type);
     }
 
-    public Optional<GeoUnitSummaryDto> findByIdSummary(String code) {
-        return geoUnitRepository.findById(code)
-                .map(GeoUnitMapper::toMinimalDto);
-    }
-
     public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
         if (!geoUnitRepository.existsById(parentCode)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + parentCode);

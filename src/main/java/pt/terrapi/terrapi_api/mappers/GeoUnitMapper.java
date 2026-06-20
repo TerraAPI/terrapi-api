@@ -1,8 +1,10 @@
 package pt.terrapi.terrapi_api.mappers;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 
 public final class GeoUnitMapper {
@@ -43,6 +45,23 @@ public final class GeoUnitMapper {
         GeoUnit entity = new GeoUnit();
         applyTo(dto, entity);
         return entity;
+    }
+
+    public static GeoUnitSummaryDto fromProjection(GeoUnitSummaryProjection p) {
+        return new GeoUnitSummaryDto(
+                p.getCode(),
+                p.getDisplayName(),
+                p.getType(),
+                p.getParentCode()
+        );
+    }
+
+    public static List<GeoUnitSummaryDto> fromProjectionList(List<GeoUnitSummaryProjection> projections) {
+        return projections.stream().map(GeoUnitMapper::fromProjection).toList();
+    }
+
+    public static Page<GeoUnitSummaryDto> fromProjectionPage(Page<GeoUnitSummaryProjection> page) {
+        return page.map(GeoUnitMapper::fromProjection);
     }
 
     public static void applyTo(GeoUnitDetailsDto dto, GeoUnit target) {

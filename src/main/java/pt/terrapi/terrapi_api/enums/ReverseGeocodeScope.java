@@ -1,6 +1,6 @@
 package pt.terrapi.terrapi_api.enums;
 
-public enum AncestorScope {
+public enum ReverseGeocodeScope {
     ADMIN,
-    NUTS
+    ADMIN_NUTS
 }

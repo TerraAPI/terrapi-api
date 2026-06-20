@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
+import pt.terrapi.terrapi_api.dto.ReverseGeocodeResponse;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.terrapi_api.enums.ReverseGeocodeScope;
 import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
 @RestController
@@ -41,6 +43,16 @@ public class GeoUnitController {
             return ResponseEntity.ok(geoUnitQueryService.findByType(type, pageable));
         }
         return ResponseEntity.ok(geoUnitQueryService.findAll(pageable));
+    }
+
+    @GetMapping("/reverse-geocode")
+    @Operation(summary = "Reverse geocode a coordinate, returning the containing parish and its hierarchy")
+    public ResponseEntity<ReverseGeocodeResponse> reverseGeocode(
+            @Parameter(description = "Latitude") @RequestParam double lat,
+            @Parameter(description = "Longitude") @RequestParam double lon,
+            @Parameter(description = "Scope: ADMIN, ADMIN_NUTS")
+            @RequestParam(defaultValue = "ADMIN") ReverseGeocodeScope scope) {
+        return ResponseEntity.ok(geoUnitQueryService.reverseGeocode(lat, lon, scope));
     }
 
     @GetMapping("/{id}")

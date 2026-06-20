@@ -62,4 +62,28 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             WHERE gu.parent.code = :parentCode
             """)
     List<GeoUnitSummaryDto> findByParentCodeMinimal(@Param("parentCode") String parentCode);
+
+    @Query("""
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
+                gu.type,
+                gu.parent.code)
+            FROM GeoUnit gu
+            WHERE gu.type = :type
+            ORDER BY gu.name
+            """)
+    List<GeoUnitSummaryDto> findByTypeList(@Param("type") GeoUnitType type);
+
+    @Query("""
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
+                gu.type,
+                gu.parent.code)
+            FROM GeoUnit gu
+            WHERE gu.parent.code = :parentCode AND gu.type = :type
+            ORDER BY gu.name
+            """)
+    List<GeoUnitSummaryDto> findByParentCodeAndTypeMinimal(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
 }

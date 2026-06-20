@@ -44,6 +44,22 @@ public class GeoUnitService {
     }
 
     @Transactional(readOnly = true)
+    public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
+        return geoUnitRepository.findByTypeList(type);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<GeoUnitSummaryDto> findByIdSummary(String code) {
+        return geoUnitRepository.findById(code)
+                .map(GeoUnitMapper::toMinimalDto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
+        return geoUnitRepository.findByParentCodeAndTypeMinimal(parentCode, type);
+    }
+
+    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findAncestors(String code, AncestorScope scope) {
         if (scope == AncestorScope.DIRECT) {
             return geoUnitRepository.findByIdWithParent(code)

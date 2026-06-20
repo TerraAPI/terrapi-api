@@ -19,17 +19,17 @@ import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
 import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.service.GeoUnitService;
+import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
 @RestController
 @RequestMapping("/api/v1/geo-units")
 @Tag(name = "Geographic Units", description = "Query geographic units and hierarchy")
 public class GeoUnitController {
 
-    private final GeoUnitService geoUnitService;
+    private final GeoUnitQueryService geoUnitQueryService;
 
-    public GeoUnitController(GeoUnitService geoUnitService) {
-        this.geoUnitService = geoUnitService;
+    public GeoUnitController(GeoUnitQueryService geoUnitQueryService) {
+        this.geoUnitQueryService = geoUnitQueryService;
     }
 
     @GetMapping
@@ -39,9 +39,9 @@ public class GeoUnitController {
             @RequestParam(required = false) GeoUnitType type,
             @ParameterObject @PageableDefault(size = 20, sort = "code", direction = Sort.Direction.ASC) Pageable pageable) {
         if (type != null) {
-            return ResponseEntity.ok(geoUnitService.findByType(type, pageable));
+            return ResponseEntity.ok(geoUnitQueryService.findByType(type, pageable));
         }
-        return ResponseEntity.ok(geoUnitService.findAll(pageable));
+        return ResponseEntity.ok(geoUnitQueryService.findAll(pageable));
     }
 
     @GetMapping("/{id}")
@@ -49,7 +49,7 @@ public class GeoUnitController {
     public ResponseEntity<GeoUnitDetailsDto> findById(
             @Parameter(description = "Geographic unit code (DICOFRE)")
             @PathVariable String id) {
-        return geoUnitService.findById(id)
+        return geoUnitQueryService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -59,7 +59,7 @@ public class GeoUnitController {
     public ResponseEntity<List<GeoUnitSummaryDto>> findChildren(
             @Parameter(description = "Parent geographic unit code")
             @PathVariable String id) {
-        return ResponseEntity.ok(geoUnitService.findChildren(id));
+        return ResponseEntity.ok(geoUnitQueryService.findChildren(id));
     }
 
     @GetMapping("/{id}/ancestors")
@@ -69,6 +69,6 @@ public class GeoUnitController {
             @PathVariable String id,
             @Parameter(description = "Scope: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")
             @RequestParam(defaultValue = "ADMIN_AND_NUTS") AncestorScope scope) {
-        return ResponseEntity.ok(geoUnitService.findAncestors(id, scope));
+        return ResponseEntity.ok(geoUnitQueryService.findAncestors(id, scope));
     }
 }

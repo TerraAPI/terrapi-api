@@ -18,53 +18,45 @@ import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
 
 @Service
 @RequiredArgsConstructor
-public class GeoUnitService {
+@Transactional(readOnly = true)
+public class GeoUnitQueryService {
 
     private final GeoUnitRepository geoUnitRepository;
 
-    @Transactional(readOnly = true)
     public PagedResponse<GeoUnitSummaryDto> findAll(Pageable pageable) {
         return PagedResponse.from(geoUnitRepository.findAllMinimal(pageable));
     }
 
-    @Transactional(readOnly = true)
     public PagedResponse<GeoUnitSummaryDto> findByType(GeoUnitType type, Pageable pageable) {
         return PagedResponse.from(geoUnitRepository.findByTypeMinimal(type, pageable));
     }
 
-    @Transactional(readOnly = true)
     public Optional<GeoUnitDetailsDto> findById(String code) {
         return geoUnitRepository.findById(code)
                 .map(GeoUnitMapper::toDetailedDto);
     }
 
-    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findChildren(String code) {
         return geoUnitRepository.findByParentCodeMinimal(code);
     }
 
-    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
         return geoUnitRepository.findByTypeList(type);
     }
 
-    @Transactional(readOnly = true)
     public Optional<GeoUnitSummaryDto> findByIdSummary(String code) {
         return geoUnitRepository.findById(code)
                 .map(GeoUnitMapper::toMinimalDto);
     }
 
-    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
         return geoUnitRepository.findByParentCodeAndTypeMinimal(parentCode, type);
     }
 
-    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
         return geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type);
     }
 
-    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findAncestors(String code, AncestorScope scope) {
         if (scope == AncestorScope.DIRECT) {
             return geoUnitRepository.findByIdWithParent(code)

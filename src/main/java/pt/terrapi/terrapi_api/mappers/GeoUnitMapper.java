@@ -6,6 +6,7 @@ import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public final class GeoUnitMapper {
 
@@ -51,7 +52,7 @@ public final class GeoUnitMapper {
         return new GeoUnitSummaryDto(
                 p.getCode(),
                 p.getDisplayName(),
-                p.getType(),
+                GeoUnitType.fromValue(p.getType()),
                 p.getParentCode()
         );
     }

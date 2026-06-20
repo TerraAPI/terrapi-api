@@ -13,15 +13,15 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
-    @Query("""
+    @Query(value = """
             SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
+                   gu.simplified_name AS simplifiedName,
                    gu.name,
                    gu.type,
-                   gu.parent.code AS parentCode
-            FROM GeoUnit gu
+                   gu.parent_code AS parentCode
+            FROM geo_units gu
             WHERE gu.code = :code
-            """)
+            """, nativeQuery = true)
     Optional<GeoUnitSummaryProjection> findSummaryById(@Param("code") String code);
 
     @Query(value = """

@@ -9,12 +9,14 @@ public record GeoUnitDetailsDto(
         String code,
         @Schema(description = "Unit name")
         String name,
-        @Schema(description = "Simplified name")
+        @Schema(description = "Simplified name (parish only)")
         String simplifiedName,
         @Schema(description = "Geographic unit type")
         GeoUnitType type,
-        @Schema(description = "Parent unit code")
-        String parentCode,
+
+        @Schema(description = "Parent unit")
+        GeoUnitSummaryDto parent,
+
         @Schema(description = "NUTS III code")
         String nuts3Code,
         @Schema(description = "Area in hectares")

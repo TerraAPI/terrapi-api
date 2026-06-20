@@ -104,6 +104,26 @@ public class GeoUnitQueryService {
                 }
                 yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(parish), ancestors);
             }
+            case NUTS -> {
+                GeoUnit municipality = parish.getParent();
+                String nuts3Code = municipality != null && municipality.getType() == GeoUnitType.MUNICIPALITY
+                        ? municipality.getNuts3Code()
+                        : null;
+                if (nuts3Code == null) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "No NUTS unit found at this location");
+                }
+                GeoUnit nuts3 = geoUnitRepository.findById(nuts3Code)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "No NUTS unit found at this location"));
+                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
+                GeoUnit n = nuts3.getParent();
+                while (n != null) {
+                    ancestors.add(GeoUnitMapper.toMinimalDto(n));
+                    n = n.getParent();
+                }
+                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(nuts3), ancestors);
+            }
         };
     }
 }

@@ -28,7 +28,7 @@ public class GeoController {
     public ResponseEntity<ReverseGeocodeResponse> reverseGeocode(
             @Parameter(description = "Latitude") @RequestParam double lat,
             @Parameter(description = "Longitude") @RequestParam double lon,
-            @Parameter(description = "Scope: ADMIN, ADMIN_NUTS")
+            @Parameter(description = "Scope: ADMIN, ADMIN_NUTS, NUTS")
             @RequestParam(defaultValue = "ADMIN") ReverseGeocodeScope scope) {
         return ResponseEntity.ok(geoUnitQueryService.reverseGeocode(lat, lon, scope));
     }

@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -30,7 +30,7 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     List<GeoUnit> findAncestorsRecursive(@Param("code") String code);
 
     @Query(value = """
-            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
                 gu.code,
                 CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
                 gu.type,
@@ -38,10 +38,10 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             FROM GeoUnit gu
             """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu")
-    Page<GeoUnitMinimalDto> findAllMinimal(Pageable pageable);
+    Page<GeoUnitSummaryDto> findAllMinimal(Pageable pageable);
 
     @Query(value = """
-            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
                 gu.code,
                 CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
                 gu.type,
@@ -50,10 +50,10 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             WHERE gu.type = :type
             """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu WHERE gu.type = :type")
-    Page<GeoUnitMinimalDto> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
+    Page<GeoUnitSummaryDto> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
 
     @Query("""
-            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
                 gu.code,
                 CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
                 gu.type,
@@ -61,5 +61,5 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             FROM GeoUnit gu
             WHERE gu.parent.code = :parentCode
             """)
-    List<GeoUnitMinimalDto> findByParentCodeMinimal(@Param("parentCode") String parentCode);
+    List<GeoUnitSummaryDto> findByParentCodeMinimal(@Param("parentCode") String parentCode);
 }

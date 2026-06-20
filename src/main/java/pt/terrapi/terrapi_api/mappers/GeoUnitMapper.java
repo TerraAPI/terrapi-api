@@ -1,16 +1,16 @@
 package pt.terrapi.terrapi_api.mappers;
 
 import java.util.List;
-import pt.terrapi.terrapi_api.dto.GeoUnitDetailedDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 
 public final class GeoUnitMapper {
 
     private GeoUnitMapper() {}
 
-    public static GeoUnitDetailedDto toDetailedDto(GeoUnit entity) {
-        return new GeoUnitDetailedDto(
+    public static GeoUnitDetailsDto toDetailedDto(GeoUnit entity) {
+        return new GeoUnitDetailsDto(
                 entity.getCode(),
                 entity.getName(),
                 entity.getSimplifiedName(),
@@ -22,12 +22,12 @@ public final class GeoUnitMapper {
         );
     }
 
-    public static List<GeoUnitDetailedDto> toDetailedDtoList(List<GeoUnit> entities) {
+    public static List<GeoUnitDetailsDto> toDetailedDtoList(List<GeoUnit> entities) {
         return entities.stream().map(GeoUnitMapper::toDetailedDto).toList();
     }
 
-    public static GeoUnitMinimalDto toMinimalDto(GeoUnit entity) {
-        return new GeoUnitMinimalDto(
+    public static GeoUnitSummaryDto toMinimalDto(GeoUnit entity) {
+        return new GeoUnitSummaryDto(
                 entity.getCode(),
                 entity.getSimplifiedName() != null ? entity.getSimplifiedName() : entity.getName(),
                 entity.getType(),
@@ -35,17 +35,17 @@ public final class GeoUnitMapper {
         );
     }
 
-    public static List<GeoUnitMinimalDto> toMinimalDtoList(List<GeoUnit> entities) {
+    public static List<GeoUnitSummaryDto> toMinimalDtoList(List<GeoUnit> entities) {
         return entities.stream().map(GeoUnitMapper::toMinimalDto).toList();
     }
 
-    public static GeoUnit toEntity(GeoUnitDetailedDto dto) {
+    public static GeoUnit toEntity(GeoUnitDetailsDto dto) {
         GeoUnit entity = new GeoUnit();
         applyTo(dto, entity);
         return entity;
     }
 
-    public static void applyTo(GeoUnitDetailedDto dto, GeoUnit target) {
+    public static void applyTo(GeoUnitDetailsDto dto, GeoUnit target) {
         target.setCode(dto.code());
         target.setName(dto.name());
         target.setSimplifiedName(dto.simplifiedName());

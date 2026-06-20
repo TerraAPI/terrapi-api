@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 @Schema(description = "Unidade geografica (dados minimos para listagens)")
-public record GeoUnitMinimalDto(
+public record GeoUnitSummaryDto(
         @Schema(description = "Codigo da unidade (DICOFRE)")
         String code,
         @Schema(description = "Nome (simplificado se disponivel, caso contrario nome original)")

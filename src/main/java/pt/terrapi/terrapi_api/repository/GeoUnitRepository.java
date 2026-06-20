@@ -14,16 +14,20 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
     /**
-     * Shared {@link GeoUnitSummaryDto} constructor projection. The {@code p} alias must be
-     * supplied by the concrete query (LEFT JOIN to keep root units, JOIN when the filter
-     * already guarantees a parent).
+     * Shared {@link GeoUnitSummaryDto} constructor projection. References the {@code gu} and
+     * {@code p} aliases, which the concrete query must provide via {@link #FROM_GEO_UNIT} plus a
+     * parent join (LEFT JOIN to keep parent-less units, JOIN only when the WHERE clause filters
+     * on the parent and therefore already guarantees one).
      */
-    String SUMMARY_SELECT = """
+    String SUMMARY_PROJECTION = """
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
                 gu.code,
                 COALESCE(gu.simplifiedName, gu.name),
                 gu.type,
                 p.code)
+            """;
+
+    String FROM_GEO_UNIT = """
             FROM GeoUnit gu
             """;
 
@@ -36,26 +40,33 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             """, nativeQuery = true)
     Optional<String> findContainingCode(@Param("lon") double lon, @Param("lat") double lat, @Param("type") int type);
 
-    @Query(value = SUMMARY_SELECT + " LEFT JOIN gu.parent p",
+    @Query(value = SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " LEFT JOIN gu.parent p",
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu")
     Page<GeoUnitSummaryDto> findSummaryPage(Pageable pageable);
 
-    @Query(value = SUMMARY_SELECT + " LEFT JOIN gu.parent p WHERE gu.type = :type",
+    @Query(value = SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " LEFT JOIN gu.parent p WHERE gu.type = :type",
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu WHERE gu.type = :type")
     Page<GeoUnitSummaryDto> findSummaryPageByType(@Param("type") GeoUnitType type, Pageable pageable);
 
-    @Query(SUMMARY_SELECT + " LEFT JOIN gu.parent p WHERE gu.type = :type ORDER BY gu.name")
+    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " LEFT JOIN gu.parent p WHERE gu.type = :type ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByType(@Param("type") GeoUnitType type);
 
-    @Query(SUMMARY_SELECT + " JOIN gu.parent p WHERE p.code = :parentCode ORDER BY gu.name")
+    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " JOIN gu.parent p WHERE p.code = :parentCode ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByParentCode(@Param("parentCode") String parentCode);
 
-    @Query(SUMMARY_SELECT + " JOIN gu.parent p WHERE p.code = :parentCode AND gu.type = :type ORDER BY gu.name")
+    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " JOIN gu.parent p WHERE p.code = :parentCode AND gu.type = :type ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByParentCodeAndType(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
 
-    @Query(SUMMARY_SELECT + " JOIN gu.parent p WHERE p.parent.code = :grandparentCode AND gu.type = :type ORDER BY gu.name")
+    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " JOIN gu.parent p WHERE p.parent.code = :grandparentCode AND gu.type = :type ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByGrandparentCodeAndType(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
 
-    @Query(SUMMARY_SELECT + " JOIN gu.parent p WHERE gu.nuts3Code = :nuts3Code ORDER BY gu.name")
+    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
+            + " LEFT JOIN gu.parent p WHERE gu.nuts3Code = :nuts3Code ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByNuts3Code(@Param("nuts3Code") String nuts3Code);
 }

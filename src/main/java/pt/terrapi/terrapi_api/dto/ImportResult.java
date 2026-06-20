@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public record ImportResult(
-        @Schema(description = "Contagens por tipo de unidade geográfica (DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3)")
+        @Schema(description = "Counts by geographic unit type (DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3)")
         Map<String, Integer> counts
 ) {
 

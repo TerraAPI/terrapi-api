@@ -3,14 +3,14 @@ package pt.terrapi.terrapi_api.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
-@Schema(description = "Unidade geografica (dados minimos para listagens)")
+@Schema(description = "Geographic unit (minimal data for listings)")
 public record GeoUnitSummaryDto(
-        @Schema(description = "Codigo da unidade (DICOFRE)")
+        @Schema(description = "Unit code (DICOFRE)")
         String code,
-        @Schema(description = "Nome (simplificado se disponivel, caso contrario nome original)")
+        @Schema(description = "Name (simplified if available, otherwise original name)")
         String name,
-        @Schema(description = "Tipo de unidade geografica")
+        @Schema(description = "Geographic unit type")
         GeoUnitType type,
-        @Schema(description = "Codigo da unidade pai")
+        @Schema(description = "Parent unit code")
         String parentCode
 ) {}

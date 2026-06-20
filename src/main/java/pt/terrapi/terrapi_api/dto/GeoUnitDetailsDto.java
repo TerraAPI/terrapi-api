@@ -3,22 +3,22 @@ package pt.terrapi.terrapi_api.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
-@Schema(description = "Unidade geografica")
+@Schema(description = "Geographic unit")
 public record GeoUnitDetailsDto(
-        @Schema(description = "Codigo da unidade (DICOFRE)")
+        @Schema(description = "Unit code (DICOFRE)")
         String code,
-        @Schema(description = "Nome da unidade")
+        @Schema(description = "Unit name")
         String name,
-        @Schema(description = "Nome simplificado")
+        @Schema(description = "Simplified name")
         String simplifiedName,
-        @Schema(description = "Tipo de unidade geografica")
+        @Schema(description = "Geographic unit type")
         GeoUnitType type,
-        @Schema(description = "Codigo da unidade pai")
+        @Schema(description = "Parent unit code")
         String parentCode,
-        @Schema(description = "Codigo NUTS III")
+        @Schema(description = "NUTS III code")
         String nuts3Code,
-        @Schema(description = "Area em hectares")
+        @Schema(description = "Area in hectares")
         Double areaHa,
-        @Schema(description = "Perimetro em quilometros")
+        @Schema(description = "Perimeter in kilometers")
         Double perimeterKm
 ) {}

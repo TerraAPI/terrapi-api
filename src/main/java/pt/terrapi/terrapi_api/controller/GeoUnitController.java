@@ -23,7 +23,7 @@ import pt.terrapi.terrapi_api.service.GeoUnitService;
 
 @RestController
 @RequestMapping("/api/v1/geo-units")
-@Tag(name = "Unidades Geograficas", description = "Consulta de unidades geograficas e hierarquia")
+@Tag(name = "Geographic Units", description = "Query geographic units and hierarchy")
 public class GeoUnitController {
 
     private final GeoUnitService geoUnitService;
@@ -33,9 +33,9 @@ public class GeoUnitController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar unidades geograficas, opcionalmente filtradas por tipo")
+    @Operation(summary = "List geographic units, optionally filtered by type")
     public ResponseEntity<PagedResponse<GeoUnitSummaryDto>> findAll(
-            @Parameter(description = "Filtrar por tipo: DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
+            @Parameter(description = "Filter by type: DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
             @RequestParam(required = false) GeoUnitType type,
             @ParameterObject @PageableDefault(size = 20, sort = "code", direction = Sort.Direction.ASC) Pageable pageable) {
         if (type != null) {
@@ -45,9 +45,9 @@ public class GeoUnitController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obter unidade geografica por codigo")
+    @Operation(summary = "Get geographic unit by code")
     public ResponseEntity<GeoUnitDetailsDto> findById(
-            @Parameter(description = "Codigo da unidade geografica (DICOFRE)")
+            @Parameter(description = "Geographic unit code (DICOFRE)")
             @PathVariable String id) {
         return geoUnitService.findById(id)
                 .map(ResponseEntity::ok)
@@ -55,19 +55,19 @@ public class GeoUnitController {
     }
 
     @GetMapping("/{id}/children")
-    @Operation(summary = "Listar unidades filhas (descendentes diretos)")
+    @Operation(summary = "List child units (direct descendants)")
     public ResponseEntity<List<GeoUnitSummaryDto>> findChildren(
-            @Parameter(description = "Codigo da unidade geografica pai")
+            @Parameter(description = "Parent geographic unit code")
             @PathVariable String id) {
         return ResponseEntity.ok(geoUnitService.findChildren(id));
     }
 
     @GetMapping("/{id}/ancestors")
-    @Operation(summary = "Listar unidades ancestrais")
+    @Operation(summary = "List ancestor units")
     public ResponseEntity<List<GeoUnitSummaryDto>> findAncestors(
             @Parameter(description = "Codigo da unidade geografica")
             @PathVariable String id,
-            @Parameter(description = "Ambito: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")
+            @Parameter(description = "Scope: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")
             @RequestParam(defaultValue = "ADMIN_AND_NUTS") AncestorScope scope) {
         return ResponseEntity.ok(geoUnitService.findAncestors(id, scope));
     }

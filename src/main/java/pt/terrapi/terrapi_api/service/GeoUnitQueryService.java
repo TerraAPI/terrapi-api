@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
@@ -37,6 +39,9 @@ public class GeoUnitQueryService {
     }
 
     public List<GeoUnitSummaryDto> findChildren(String code) {
+        if (!geoUnitRepository.existsById(code)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
+        }
         return geoUnitRepository.findByParentCodeMinimal(code);
     }
 
@@ -50,10 +55,16 @@ public class GeoUnitQueryService {
     }
 
     public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
+        if (!geoUnitRepository.existsById(parentCode)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + parentCode);
+        }
         return geoUnitRepository.findByParentCodeAndTypeMinimal(parentCode, type);
     }
 
     public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
+        if (!geoUnitRepository.existsById(grandparentCode)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + grandparentCode);
+        }
         return geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type);
     }
 

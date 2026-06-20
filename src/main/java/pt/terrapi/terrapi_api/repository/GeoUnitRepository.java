@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -23,72 +23,91 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     Optional<String> findContainingCode(@Param("lon") double lon, @Param("lat") double lat, @Param("type") int type);
 
     @Query(value = """
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
+            LEFT JOIN gu.parent p
             """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu")
-    Page<GeoUnitSummaryProjection> findAllMinimal(Pageable pageable);
+    Page<GeoUnitSummaryDto> findAllMinimal(Pageable pageable);
 
     @Query(value = """
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
+            LEFT JOIN gu.parent p
             WHERE gu.type = :type
             """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu WHERE gu.type = :type")
-    Page<GeoUnitSummaryProjection> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
+    Page<GeoUnitSummaryDto> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
 
     @Query("""
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
-            WHERE gu.parent.code = :parentCode
+            LEFT JOIN gu.parent p
+            WHERE p.code = :parentCode
             """)
-    List<GeoUnitSummaryProjection> findByParentCodeMinimal(@Param("parentCode") String parentCode);
+    List<GeoUnitSummaryDto> findByParentCodeMinimal(@Param("parentCode") String parentCode);
 
     @Query("""
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
+            LEFT JOIN gu.parent p
             WHERE gu.type = :type
             ORDER BY gu.name
             """)
-    List<GeoUnitSummaryProjection> findByTypeList(@Param("type") GeoUnitType type);
+    List<GeoUnitSummaryDto> findByTypeList(@Param("type") GeoUnitType type);
 
     @Query("""
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
-            WHERE gu.parent.code = :parentCode AND gu.type = :type
+            LEFT JOIN gu.parent p
+            WHERE p.code = :parentCode AND gu.type = :type
             ORDER BY gu.name
             """)
-    List<GeoUnitSummaryProjection> findByParentCodeAndTypeMinimal(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
+    List<GeoUnitSummaryDto> findByParentCodeAndTypeMinimal(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
 
     @Query("""
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
             FROM GeoUnit gu
-            WHERE gu.parent.parent.code = :grandparentCode AND gu.type = :type
+            LEFT JOIN gu.parent p
+            WHERE p.parent.code = :grandparentCode AND gu.type = :type
             ORDER BY gu.name
             """)
-    List<GeoUnitSummaryProjection> findByGrandparentCodeAndTypeMinimal(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
+    List<GeoUnitSummaryDto> findByGrandparentCodeAndTypeMinimal(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
+
+    @Query("""
+            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+                gu.code,
+                COALESCE(gu.simplifiedName, gu.name),
+                gu.type,
+                p.code)
+            FROM GeoUnit gu
+            LEFT JOIN gu.parent p
+            WHERE gu.nuts3Code = :nuts3Code
+            ORDER BY gu.name
+            """)
+    List<GeoUnitSummaryDto> findByNuts3CodeMinimal(@Param("nuts3Code") String nuts3Code);
 }

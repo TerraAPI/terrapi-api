@@ -27,11 +27,11 @@ public class GeoUnitQueryService {
     private final GeoUnitRepository geoUnitRepository;
 
     public PagedResponse<GeoUnitSummaryDto> findAll(Pageable pageable) {
-        return PagedResponse.from(GeoUnitMapper.fromProjectionPage(geoUnitRepository.findAllMinimal(pageable)));
+        return PagedResponse.from(geoUnitRepository.findAllMinimal(pageable));
     }
 
     public PagedResponse<GeoUnitSummaryDto> findByType(GeoUnitType type, Pageable pageable) {
-        return PagedResponse.from(GeoUnitMapper.fromProjectionPage(geoUnitRepository.findByTypeMinimal(type, pageable)));
+        return PagedResponse.from(geoUnitRepository.findByTypeMinimal(type, pageable));
     }
 
     public Optional<GeoUnitDetailsDto> findById(String code) {
@@ -43,11 +43,11 @@ public class GeoUnitQueryService {
         if (!geoUnitRepository.existsById(code)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
         }
-        return GeoUnitMapper.fromProjectionList(geoUnitRepository.findByParentCodeMinimal(code));
+        return geoUnitRepository.findByParentCodeMinimal(code);
     }
 
     public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
-        return GeoUnitMapper.fromProjectionList(geoUnitRepository.findByTypeList(type));
+        return geoUnitRepository.findByTypeList(type);
     }
 
     public Optional<GeoUnitSummaryDto> findByIdSummary(String code) {
@@ -59,14 +59,21 @@ public class GeoUnitQueryService {
         if (!geoUnitRepository.existsById(parentCode)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + parentCode);
         }
-        return GeoUnitMapper.fromProjectionList(geoUnitRepository.findByParentCodeAndTypeMinimal(parentCode, type));
+        return geoUnitRepository.findByParentCodeAndTypeMinimal(parentCode, type);
     }
 
     public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
         if (!geoUnitRepository.existsById(grandparentCode)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + grandparentCode);
         }
-        return GeoUnitMapper.fromProjectionList(geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type));
+        return geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type);
+    }
+
+    public List<GeoUnitSummaryDto> findMunicipalitiesByNuts3(String nuts3Code) {
+        if (!geoUnitRepository.existsById(nuts3Code)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + nuts3Code);
+        }
+        return geoUnitRepository.findByNuts3CodeMinimal(nuts3Code);
     }
 
     public ReverseGeocodeResponse reverseGeocode(double lat, double lon, ReverseGeocodeScope scope) {

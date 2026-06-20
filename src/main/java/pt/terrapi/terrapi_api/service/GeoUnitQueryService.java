@@ -9,9 +9,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeRequest;
+import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeResult;
+import pt.terrapi.terrapi_api.dto.ContainsResponse;
+import pt.terrapi.terrapi_api.dto.GeoJsonFeatureDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
+import pt.terrapi.terrapi_api.dto.PointDto;
 import pt.terrapi.terrapi_api.dto.ReverseGeocodeResponse;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
@@ -69,6 +74,54 @@ public class GeoUnitQueryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + nuts3Code);
         }
         return geoUnitRepository.findSummaryListByNuts3Code(nuts3Code);
+    }
+
+    public ContainsResponse pointInside(String code, double lat, double lon) {
+        if (!geoUnitRepository.existsById(code)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
+        }
+        boolean contains = geoUnitRepository.isPointInside(code, lon, lat).orElse(false);
+        return new ContainsResponse(code, contains);
+    }
+
+    public GeoJsonFeatureDto geometryAsGeoJson(String code, double tolerance) {
+        GeoUnit unit = geoUnitRepository.findById(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));
+        String geoJson = geoUnitRepository.findGeoJsonByCode(code, tolerance)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Unit has no geometry: " + code));
+        String name = unit.getSimplifiedName() != null ? unit.getSimplifiedName() : unit.getName();
+        return GeoJsonFeatureDto.of(geoJson, unit.getCode(), name, unit.getType());
+    }
+
+    public List<GeoUnitSummaryDto> findWithinBbox(GeoUnitType type, double minLon, double minLat,
+            double maxLon, double maxLat) {
+        return GeoUnitMapper.toSummaryDtoList(
+                geoUnitRepository.findSummaryInBbox(type.getValue(), minLon, minLat, maxLon, maxLat));
+    }
+
+    public List<GeoUnitSummaryDto> findWithinRadius(GeoUnitType type, double lat, double lon, double radiusKm) {
+        return GeoUnitMapper.toSummaryDtoList(
+                geoUnitRepository.findSummaryWithinRadius(type.getValue(), lon, lat, radiusKm * 1000.0));
+    }
+
+    public List<BatchReverseGeocodeResult> batchReverseGeocode(BatchReverseGeocodeRequest request) {
+        ReverseGeocodeScope scope = request.scope() != null ? request.scope() : ReverseGeocodeScope.ADMIN;
+        List<PointDto> points = request.points() != null ? request.points() : List.of();
+        List<BatchReverseGeocodeResult> results = new ArrayList<>(points.size());
+        for (PointDto point : points) {
+            try {
+                ReverseGeocodeResponse response = reverseGeocode(point.lat(), point.lon(), scope);
+                results.add(new BatchReverseGeocodeResult(point, true, response));
+            } catch (ResponseStatusException ex) {
+                if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                    results.add(new BatchReverseGeocodeResult(point, false, null));
+                } else {
+                    throw ex;
+                }
+            }
+        }
+        return results;
     }
 
     public ReverseGeocodeResponse reverseGeocode(double lat, double lon, ReverseGeocodeScope scope) {

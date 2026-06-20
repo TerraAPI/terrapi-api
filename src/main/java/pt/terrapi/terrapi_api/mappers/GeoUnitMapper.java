@@ -3,7 +3,9 @@ package pt.terrapi.terrapi_api.mappers;
 import java.util.List;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public final class GeoUnitMapper {
 
@@ -53,5 +55,18 @@ public final class GeoUnitMapper {
         target.setNuts3Code(dto.nuts3Code());
         target.setAreaHa(dto.areaHa());
         target.setPerimeterKm(dto.perimeterKm());
+    }
+
+    public static GeoUnitSummaryDto toSummaryDto(GeoUnitSummaryProjection projection) {
+        return new GeoUnitSummaryDto(
+                projection.getCode(),
+                projection.getName(),
+                GeoUnitType.fromValue(projection.getType()),
+                projection.getParentCode()
+        );
+    }
+
+    public static List<GeoUnitSummaryDto> toSummaryDtoList(List<GeoUnitSummaryProjection> projections) {
+        return projections.stream().map(GeoUnitMapper::toSummaryDto).toList();
     }
 }

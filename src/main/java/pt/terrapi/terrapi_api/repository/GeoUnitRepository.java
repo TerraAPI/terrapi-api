@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
+import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -39,6 +40,51 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             LIMIT 1
             """, nativeQuery = true)
     Optional<String> findContainingCode(@Param("lon") double lon, @Param("lat") double lat, @Param("type") int type);
+
+    @Query(value = """
+            SELECT COALESCE(ST_Contains(gu.geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)), false)
+            FROM geo_units gu
+            WHERE gu.code = :code
+            """, nativeQuery = true)
+    Optional<Boolean> isPointInside(@Param("code") String code, @Param("lon") double lon, @Param("lat") double lat);
+
+    @Query(value = """
+            SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(gu.geometry, :tolerance))
+            FROM geo_units gu
+            WHERE gu.code = :code
+            """, nativeQuery = true)
+    Optional<String> findGeoJsonByCode(@Param("code") String code, @Param("tolerance") double tolerance);
+
+    @Query(value = """
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu
+            WHERE gu.type = :type
+            AND ST_Intersects(gu.geometry, ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326))
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findSummaryInBbox(@Param("type") int type,
+            @Param("minLon") double minLon, @Param("minLat") double minLat,
+            @Param("maxLon") double maxLon, @Param("maxLat") double maxLat);
+
+    @Query(value = """
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu
+            WHERE gu.type = :type
+            AND ST_DWithin(gu.geometry::geography,
+                           ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+                           :radiusMeters)
+            ORDER BY ST_Distance(gu.geometry::geography,
+                                 ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findSummaryWithinRadius(@Param("type") int type,
+            @Param("lon") double lon, @Param("lat") double lat,
+            @Param("radiusMeters") double radiusMeters);
 
     @Query(value = SUMMARY_PROJECTION + FROM_GEO_UNIT
             + " LEFT JOIN gu.parent p",

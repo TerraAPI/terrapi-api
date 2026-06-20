@@ -13,19 +13,16 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
-    @Query("SELECT gu FROM GeoUnit gu JOIN FETCH gu.parent WHERE gu.code = :code")
-    Optional<GeoUnit> findByIdWithParent(@Param("code") String code);
-
-    @Query(value = """
-            WITH RECURSIVE ancestor_chain AS (
-                SELECT * FROM geo_units WHERE code = :code
-                UNION ALL
-                SELECT gu.* FROM geo_units gu
-                JOIN ancestor_chain ac ON gu.code = ac.parent_code
-            )
-            SELECT * FROM ancestor_chain WHERE code != :code
-            """, nativeQuery = true)
-    List<GeoUnit> findAncestorsRecursive(@Param("code") String code);
+    @Query("""
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.code = :code
+            """)
+    Optional<GeoUnitSummaryProjection> findSummaryById(@Param("code") String code);
 
     @Query(value = """
             SELECT gu.code,

@@ -65,9 +65,9 @@ public class GeoUnitController {
     @GetMapping("/{id}/ancestors")
     @Operation(summary = "List ancestor units")
     public ResponseEntity<List<GeoUnitSummaryDto>> findAncestors(
-            @Parameter(description = "Codigo da unidade geografica")
+            @Parameter(description = "Geographic unit code")
             @PathVariable String id,
-            @Parameter(description = "Scope: DIRECT, ADMIN, ADMIN_AND_NUTS, NUTS")
+            @Parameter(description = "Scope: ADMIN, ADMIN_AND_NUTS, NUTS")
             @RequestParam(defaultValue = "ADMIN_AND_NUTS") AncestorScope scope) {
         return ResponseEntity.ok(geoUnitQueryService.findAncestors(id, scope));
     }

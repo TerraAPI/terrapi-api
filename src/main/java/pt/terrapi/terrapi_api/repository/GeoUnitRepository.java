@@ -2,6 +2,8 @@ package pt.terrapi.terrapi_api.repository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,17 +29,18 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             """, nativeQuery = true)
     List<GeoUnit> findAncestorsRecursive(@Param("code") String code);
 
-    @Query("""
+    @Query(value = """
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
                 gu.code,
                 CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
                 gu.type,
                 gu.parent.code)
             FROM GeoUnit gu
-            """)
-    List<GeoUnitMinimalDto> findAllMinimal();
+            """,
+            countQuery = "SELECT COUNT(gu) FROM GeoUnit gu")
+    Page<GeoUnitMinimalDto> findAllMinimal(Pageable pageable);
 
-    @Query("""
+    @Query(value = """
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(
                 gu.code,
                 CASE WHEN gu.simplifiedName IS NOT NULL THEN gu.simplifiedName ELSE gu.name END,
@@ -45,8 +48,9 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
                 gu.parent.code)
             FROM GeoUnit gu
             WHERE gu.type = :type
-            """)
-    List<GeoUnitMinimalDto> findByTypeMinimal(@Param("type") GeoUnitType type);
+            """,
+            countQuery = "SELECT COUNT(gu) FROM GeoUnit gu WHERE gu.type = :type")
+    Page<GeoUnitMinimalDto> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
 
     @Query("""
             SELECT new pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto(

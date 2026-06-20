@@ -4,10 +4,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailedDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitMinimalDto;
+import pt.terrapi.terrapi_api.dto.PagedResponse;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
@@ -21,13 +23,13 @@ public class GeoUnitService {
     private final GeoUnitRepository geoUnitRepository;
 
     @Transactional(readOnly = true)
-    public List<GeoUnitMinimalDto> findAll() {
-        return geoUnitRepository.findAllMinimal();
+    public PagedResponse<GeoUnitMinimalDto> findAll(Pageable pageable) {
+        return PagedResponse.from(geoUnitRepository.findAllMinimal(pageable));
     }
 
     @Transactional(readOnly = true)
-    public List<GeoUnitMinimalDto> findByType(GeoUnitType type) {
-        return geoUnitRepository.findByTypeMinimal(type);
+    public PagedResponse<GeoUnitMinimalDto> findByType(GeoUnitType type, Pageable pageable) {
+        return PagedResponse.from(geoUnitRepository.findByTypeMinimal(type, pageable));
     }
 
     @Transactional(readOnly = true)

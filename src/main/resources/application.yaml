@@ -75,6 +75,6 @@ terrapi:
         - lod: 3
           tolerance: 3000
     validation:
-      max-null-pct: 1.0
-      max-invalid-pct: 1.0
-      max-empty-pct: 1.0
+      max-null-pct: 0.5
+      max-invalid-pct: 25.0
+      max-empty-pct: 5.0

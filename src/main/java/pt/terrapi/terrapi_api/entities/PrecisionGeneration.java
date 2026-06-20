@@ -62,4 +62,13 @@ public class PrecisionGeneration {
             generationId = UUID.randomUUID();
         }
     }
+
+    public void updateCounters(int rowCount, int nullGeometries, int invalidGeometries,
+                               int totalUnits, int totalLods) {
+        this.rowCount = rowCount;
+        this.nullGeometries = nullGeometries;
+        this.invalidGeometries = invalidGeometries;
+        this.totalUnits = totalUnits;
+        this.totalLods = totalLods;
+    }
 }

@@ -1,20 +1,14 @@
 package pt.terrapi.terrapi_api.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.locationtech.jts.geom.Geometry;
+import pt.terrapi.terrapi_api.converters.GeoUnitTypeConverter;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 @Getter
@@ -52,8 +46,14 @@ public class GeoUnit {
     @OneToMany(mappedBy = "parent")
     private List<GeoUnit> children = new ArrayList<>();
 
+    /**
+     * Simplified name - only populated for {@link GeoUnitType#PARISH} units.
+     */
     private String simplifiedName;
 
+    /**
+     * NUTS 3 code - only populated for {@link GeoUnitType#MUNICIPALITY} units.
+     */
     @Column(length = 5)
     private String nuts3Code;
 }

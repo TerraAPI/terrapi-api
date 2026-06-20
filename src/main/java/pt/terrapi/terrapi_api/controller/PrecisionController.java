@@ -14,7 +14,7 @@ import pt.terrapi.terrapi_api.service.PrecisionGenerationService;
 
 @RestController
 @RequestMapping("/api/v1/precision")
-@Tag(name = "Precisão", description = "Geração de geometrias simplificadas (LOD)")
+@Tag(name = "Precision", description = "Generation of simplified geometries (LOD)")
 public class PrecisionController {
 
     private final PrecisionGenerationService precisionGenerationService;
@@ -24,9 +24,9 @@ public class PrecisionController {
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "Gerar geometrias simplificadas para os tipos de unidade especificados")
+    @Operation(summary = "Generate simplified geometries for specified unit types")
     public ResponseEntity<GenerationResult> generate(
-            @Parameter(description = "Tipo de unidade: ALL, DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
+            @Parameter(description = "Unit type: ALL, DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
             @RequestParam(defaultValue = "ALL") GenerationType type) {
         GenerationResult result = precisionGenerationService.generate(type);
         return ResponseEntity.ok(result);

@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,12 +25,19 @@ import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CaopImportService {
 
     private final GeoUnitRepository geoUnitRepository;
     private final PrecisionGenerationService precisionGenerationService;
     private final TaskExecutor taskExecutor;
+
+    public CaopImportService(GeoUnitRepository geoUnitRepository,
+                             PrecisionGenerationService precisionGenerationService,
+                             @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
+        this.geoUnitRepository = geoUnitRepository;
+        this.precisionGenerationService = precisionGenerationService;
+        this.taskExecutor = taskExecutor;
+    }
 
     @Transactional
     public ImportResult importFolder(String folderPath) {

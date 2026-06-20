@@ -2,10 +2,10 @@ package pt.terrapi.terrapi_api.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKBReader;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.config.LodLevel;
@@ -90,40 +90,16 @@ public class PrecisionGenerationService {
                     type, count, levels.size(), count * levels.size(), System.currentTimeMillis() - tType);
         }
 
+        ValidationResult validation = validatePrecisions(precisions);
         int totalRows = precisions.size();
-        int nullCount = 0;
-        int invalidCount = 0;
-        int emptyCount = 0;
+        int totalUnits = totalLodDefs > 0 ? (int) expectedRowCount / totalLodDefs : 0;
 
-        log.info("  Validating {} geometries...", totalRows);
-        for (GeoUnitPrecision p : precisions) {
-            Geometry g = p.getGeometry();
-            if (g == null) {
-                nullCount++;
-            } else {
-                if (!g.isValid()) invalidCount++;
-                if (g.isEmpty()) emptyCount++;
-            }
-        }
-
-        boolean rowCountMatches = totalRows == expectedRowCount;
-        double nullPct = totalRows > 0 ? 100.0 * nullCount / totalRows : 0;
-        double invalidPct = totalRows > 0 ? 100.0 * invalidCount / totalRows : 0;
-        double emptyPct = totalRows > 0 ? 100.0 * emptyCount / totalRows : 0;
-
-        double maxNull = properties.getValidation().getMaxNullPct();
-        double maxInvalid = properties.getValidation().getMaxInvalidPct();
-        double maxEmpty = properties.getValidation().getMaxEmptyPct();
-
-        if (!rowCountMatches || nullPct > maxNull || invalidPct > maxInvalid || emptyPct > maxEmpty) {
+        if (!validation.isHealthy(properties, expectedRowCount)) {
             log.error("Generation {} FAILED — rows={} expected={} null={}% invalid={}% empty={}%",
-                    generationId, totalRows, expectedRowCount, nullPct, invalidPct, emptyPct);
+                    generationId, totalRows, expectedRowCount,
+                    validation.nullPct(), validation.invalidPct(), validation.emptyPct());
             gen.setStatus(GenerationStatus.FAILED);
-            gen.setRowCount(totalRows);
-            gen.setNullGeometries(nullCount);
-            gen.setInvalidGeometries(invalidCount);
-            gen.setTotalUnits(totalLodDefs > 0 ? (int) expectedRowCount / totalLodDefs : 0);
-            gen.setTotalLods(totalLodDefs);
+            gen.updateCounters(totalRows, validation.nullCount(), validation.invalidCount(), totalUnits, totalLodDefs);
             generationRepository.save(gen);
             return new GenerationResult(generationId, GenerationStatus.FAILED, totalRows);
         }
@@ -134,11 +110,7 @@ public class PrecisionGenerationService {
         precisionRepository.saveAll(precisions);
 
         gen.setStatus(GenerationStatus.SUCCESS);
-        gen.setRowCount(totalRows);
-        gen.setNullGeometries(nullCount);
-        gen.setInvalidGeometries(invalidCount);
-        gen.setTotalUnits(totalLodDefs > 0 ? (int) expectedRowCount / totalLodDefs : 0);
-        gen.setTotalLods(totalLodDefs);
+        gen.updateCounters(totalRows, validation.nullCount(), validation.invalidCount(), totalUnits, totalLodDefs);
         generationRepository.save(gen);
 
         log.info("Generation {} SUCCESS — {} rows in {} ms",
@@ -162,8 +134,12 @@ public class PrecisionGenerationService {
                 FROM geo_units u
                 WHERE u.type = ?
                 """;
+        return jdbcTemplate.query(sql, rowMapper(type, level, generationId),
+                level.tolerance(), level.tolerance(), type.getValue());
+    }
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+    private RowMapper<GeoUnitPrecision> rowMapper(GeoUnitType type, LodLevel level, UUID generationId) {
+        return (rs, rowNum) -> {
             GeoUnitPrecision p = new GeoUnitPrecision();
             p.setGeoUnitCode(rs.getString("code"));
             p.setType(type);
@@ -182,9 +158,27 @@ public class PrecisionGenerationService {
                     throw new RuntimeException("Failed to parse WKB for geo unit " + p.getGeoUnitCode(), e);
                 }
             }
-
             return p;
-        }, level.tolerance(), level.tolerance(), type.getValue());
+        };
+    }
+
+    private ValidationResult validatePrecisions(List<GeoUnitPrecision> precisions) {
+        int totalRows = precisions.size();
+        int nullCount = 0;
+        int invalidCount = 0;
+        int emptyCount = 0;
+
+        for (GeoUnitPrecision p : precisions) {
+            var g = p.getGeometry();
+            if (g == null) {
+                nullCount++;
+            } else {
+                if (!g.isValid()) invalidCount++;
+                if (g.isEmpty()) emptyCount++;
+            }
+        }
+
+        return new ValidationResult(totalRows, nullCount, invalidCount, emptyCount);
     }
 
     private static List<GeoUnitType> resolveTypes(GenerationType generationType) {
@@ -192,5 +186,28 @@ public class PrecisionGenerationService {
             return List.of(GeoUnitType.values());
         }
         return List.of(GeoUnitType.valueOf(generationType.name()));
+    }
+
+    private record ValidationResult(int totalRows, int nullCount, int invalidCount, int emptyCount) {
+
+        double nullPct() {
+            return totalRows > 0 ? 100.0 * nullCount / totalRows : 0;
+        }
+
+        double invalidPct() {
+            return totalRows > 0 ? 100.0 * invalidCount / totalRows : 0;
+        }
+
+        double emptyPct() {
+            return totalRows > 0 ? 100.0 * emptyCount / totalRows : 0;
+        }
+
+        boolean isHealthy(PrecisionProperties properties, long expectedRowCount) {
+            PrecisionProperties.Validation thresholds = properties.getValidation();
+            return totalRows == expectedRowCount
+                    && nullPct() <= thresholds.getMaxNullPct()
+                    && invalidPct() <= thresholds.getMaxInvalidPct()
+                    && emptyPct() <= thresholds.getMaxEmptyPct();
+        }
     }
 }

@@ -18,7 +18,7 @@ import java.nio.file.Path;
 
 @RestController
 @RequestMapping("/api/v1/import")
-@Tag(name = "Importação", description = "Importação de ficheiros CAOP (GeoPackage)")
+@Tag(name = "Import", description = "Import CAOP files (GeoPackage)")
 public class ImportController {
 
     private final CaopImportService caopImportService;
@@ -28,16 +28,16 @@ public class ImportController {
     }
 
     @PostMapping("/caop/{folder}")
-    @Operation(summary = "Importar pasta com ficheiros .gpkg (desenvolvimento)")
+    @Operation(summary = "Import folder with .gpkg files (development)")
     public ResponseEntity<ImportResult> importFolder(
-            @Parameter(description = "Caminho no servidor para a pasta com ficheiros .gpkg")
+            @Parameter(description = "Server path to folder with .gpkg files")
             @PathVariable String folder) {
         ImportResult result = caopImportService.importFolder(folder);
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/caop/upload")
-    @Operation(summary = "Importar ficheiro .gpkg")
+    @Operation(summary = "Import .gpkg file")
     public ResponseEntity<ImportResult> importUpload(
             @RequestParam("file") MultipartFile file) {
         try {

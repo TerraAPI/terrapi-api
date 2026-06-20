@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
-import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
@@ -62,13 +61,4 @@ public class GeoUnitController {
         return ResponseEntity.ok(geoUnitQueryService.findChildren(id));
     }
 
-    @GetMapping("/{id}/ancestors")
-    @Operation(summary = "List ancestor units")
-    public ResponseEntity<List<GeoUnitSummaryDto>> findAncestors(
-            @Parameter(description = "Geographic unit code")
-            @PathVariable String id,
-            @Parameter(description = "Scope: ADMIN, ADMIN_AND_NUTS, NUTS")
-            @RequestParam(defaultValue = "ADMIN_AND_NUTS") AncestorScope scope) {
-        return ResponseEntity.ok(geoUnitQueryService.findAncestors(id, scope));
-    }
 }

@@ -1,7 +1,6 @@
 package pt.terrapi.terrapi_api.repository;
 
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,17 +11,6 @@ import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
-
-    @Query(value = """
-            SELECT gu.code,
-                   gu.simplified_name AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent_code AS parentCode
-            FROM geo_units gu
-            WHERE gu.code = :code
-            """, nativeQuery = true)
-    Optional<GeoUnitSummaryProjection> findSummaryById(@Param("code") String code);
 
     @Query(value = """
             SELECT gu.code,

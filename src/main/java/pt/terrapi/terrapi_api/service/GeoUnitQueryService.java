@@ -1,6 +1,5 @@
 package pt.terrapi.terrapi_api.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
-import pt.terrapi.terrapi_api.enums.AncestorScope;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.mappers.GeoUnitMapper;
 import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
@@ -66,27 +63,5 @@ public class GeoUnitQueryService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + grandparentCode);
         }
         return GeoUnitMapper.fromProjectionList(geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type));
-    }
-
-    public List<GeoUnitSummaryDto> findAncestors(String code, AncestorScope scope) {
-        String parentCode = geoUnitRepository.findSummaryById(code)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code))
-                .getParentCode();
-
-        List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-        while (parentCode != null) {
-            String current = parentCode;
-            GeoUnitSummaryProjection parent = geoUnitRepository.findSummaryById(current)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Ancestor " + current + " not found (traversing from " + code + ")"));
-            ancestors.add(GeoUnitMapper.fromProjection(parent));
-            parentCode = parent.getParentCode();
-        }
-
-        return switch (scope) {
-            case ADMIN -> ancestors.stream().filter(d -> d.type().isAdministrative()).toList();
-            case NUTS -> ancestors.stream().filter(d -> d.type().isStatistical()).toList();
-            default -> ancestors;
-        };
     }
 }

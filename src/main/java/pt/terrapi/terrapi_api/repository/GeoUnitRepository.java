@@ -13,15 +13,6 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
-    String SELECT = """
-            SELECT gu.code,
-                   gu.simplifiedName AS simplifiedName,
-                   gu.name,
-                   gu.type,
-                   gu.parent.code AS parentCode
-            FROM GeoUnit gu
-            """;
-
     @Query("SELECT gu FROM GeoUnit gu JOIN FETCH gu.parent WHERE gu.code = :code")
     Optional<GeoUnit> findByIdWithParent(@Param("code") String code);
 
@@ -36,23 +27,73 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
             """, nativeQuery = true)
     List<GeoUnit> findAncestorsRecursive(@Param("code") String code);
 
-    @Query(value = SELECT,
+    @Query(value = """
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu")
     Page<GeoUnitSummaryProjection> findAllMinimal(Pageable pageable);
 
-    @Query(value = SELECT + " WHERE gu.type = :type",
+    @Query(value = """
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.type = :type
+            """,
             countQuery = "SELECT COUNT(gu) FROM GeoUnit gu WHERE gu.type = :type")
     Page<GeoUnitSummaryProjection> findByTypeMinimal(@Param("type") GeoUnitType type, Pageable pageable);
 
-    @Query(SELECT + " WHERE gu.parent.code = :parentCode")
+    @Query("""
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.parent.code = :parentCode
+            """)
     List<GeoUnitSummaryProjection> findByParentCodeMinimal(@Param("parentCode") String parentCode);
 
-    @Query(SELECT + " WHERE gu.type = :type ORDER BY gu.name")
+    @Query("""
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.type = :type
+            ORDER BY gu.name
+            """)
     List<GeoUnitSummaryProjection> findByTypeList(@Param("type") GeoUnitType type);
 
-    @Query(SELECT + " WHERE gu.parent.code = :parentCode AND gu.type = :type ORDER BY gu.name")
+    @Query("""
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.parent.code = :parentCode AND gu.type = :type
+            ORDER BY gu.name
+            """)
     List<GeoUnitSummaryProjection> findByParentCodeAndTypeMinimal(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
 
-    @Query(SELECT + " WHERE gu.parent.parent.code = :grandparentCode AND gu.type = :type ORDER BY gu.name")
+    @Query("""
+            SELECT gu.code,
+                   gu.simplifiedName AS simplifiedName,
+                   gu.name,
+                   gu.type,
+                   gu.parent.code AS parentCode
+            FROM GeoUnit gu
+            WHERE gu.parent.parent.code = :grandparentCode AND gu.type = :type
+            ORDER BY gu.name
+            """)
     List<GeoUnitSummaryProjection> findByGrandparentCodeAndTypeMinimal(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
 }

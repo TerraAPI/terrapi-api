@@ -49,6 +49,14 @@ public class AdminController {
         return ResponseEntity.ok(geoUnitService.findChildrenOfType(code, GeoUnitType.MUNICIPALITY));
     }
 
+    @GetMapping("/districts/{code}/parishes")
+    @Operation(summary = "List parishes in a district")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listParishesByDistrict(
+            @Parameter(description = "District code (DICOFRE)")
+            @PathVariable String code) {
+        return ResponseEntity.ok(geoUnitService.findGrandchildrenOfType(code, GeoUnitType.PARISH));
+    }
+
     @GetMapping("/municipalities")
     @Operation(summary = "List all municipalities")
     public ResponseEntity<List<GeoUnitSummaryDto>> listMunicipalities() {
@@ -72,12 +80,6 @@ public class AdminController {
             @Parameter(description = "Municipality code (DICOFRE)")
             @PathVariable String code) {
         return ResponseEntity.ok(geoUnitService.findChildrenOfType(code, GeoUnitType.PARISH));
-    }
-
-    @GetMapping("/parishes")
-    @Operation(summary = "List all parishes")
-    public ResponseEntity<List<GeoUnitSummaryDto>> listParishes() {
-        return ResponseEntity.ok(geoUnitService.findAllByType(GeoUnitType.PARISH));
     }
 
     @GetMapping("/parishes/{code}")

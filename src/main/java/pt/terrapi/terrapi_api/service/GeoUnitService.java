@@ -60,6 +60,11 @@ public class GeoUnitService {
     }
 
     @Transactional(readOnly = true)
+    public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
+        return geoUnitRepository.findByGrandparentCodeAndTypeMinimal(grandparentCode, type);
+    }
+
+    @Transactional(readOnly = true)
     public List<GeoUnitSummaryDto> findAncestors(String code, AncestorScope scope) {
         if (scope == AncestorScope.DIRECT) {
             return geoUnitRepository.findByIdWithParent(code)

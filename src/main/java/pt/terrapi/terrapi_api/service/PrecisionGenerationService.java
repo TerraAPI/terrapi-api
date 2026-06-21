@@ -16,6 +16,7 @@ import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -173,7 +174,7 @@ public class PrecisionGenerationService {
     private int insertLods(GeoUnitType type, List<LodLevel> levels, UUID generationId) {
         if (levels.isEmpty()) return 0;
         String valuesClause = levels.stream()
-                .map(l -> String.format("(%d, %.1f)", l.lod(), l.tolerance()))
+                .map(l -> String.format(Locale.US, "(%d, %.1f)", l.lod(), l.tolerance()))
                 .collect(Collectors.joining(", "));
         String sql = String.format(INSERT_LODS_SQL, valuesClause);
         return jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);

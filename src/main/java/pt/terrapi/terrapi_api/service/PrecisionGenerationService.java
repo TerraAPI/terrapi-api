@@ -43,7 +43,7 @@ public class PrecisionGenerationService {
             INSERT INTO geo_unit_precisions
                 (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
                  generation_id, created_at, status)
-            SELECT code, ?, lod, ST_Transform(simplified_3763, 4326), tolerance,
+            SELECT code, ?, lod, ST_Transform(simplified_3763, 3857), tolerance,
                    ST_NPoints(simplified_3763), ?, NOW(), 'ACTIVE'
             FROM simplified
             """;

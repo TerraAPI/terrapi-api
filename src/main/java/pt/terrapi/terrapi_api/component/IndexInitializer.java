@@ -18,8 +18,10 @@ public class IndexInitializer {
         try {
             jdbcTemplate.execute(
                     "CREATE INDEX IF NOT EXISTS idx_gp_geometry ON geo_unit_precisions USING GIST (geometry)");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_gp_type_lod_status ON geo_unit_precisions (type, lod, status)");
         } catch (Exception e) {
-            log.warn("Could not create GiST index (table may not exist yet): {}", e.getMessage());
+            log.warn("Could not create index (table may not exist yet): {}", e.getMessage());
         }
     }
 }

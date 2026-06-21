@@ -1,7 +1,6 @@
 package pt.terrapi.terrapi_api.mappers;
 
 import java.util.List;
-import org.springframework.data.domain.Page;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
@@ -48,23 +47,6 @@ public final class GeoUnitMapper {
         return entity;
     }
 
-    public static GeoUnitSummaryDto fromProjection(GeoUnitSummaryProjection p) {
-        return new GeoUnitSummaryDto(
-                p.getCode(),
-                p.getDisplayName(),
-                GeoUnitType.fromValue(p.getType()),
-                p.getParentCode()
-        );
-    }
-
-    public static List<GeoUnitSummaryDto> fromProjectionList(List<GeoUnitSummaryProjection> projections) {
-        return projections.stream().map(GeoUnitMapper::fromProjection).toList();
-    }
-
-    public static Page<GeoUnitSummaryDto> fromProjectionPage(Page<GeoUnitSummaryProjection> page) {
-        return page.map(GeoUnitMapper::fromProjection);
-    }
-
     public static void applyTo(GeoUnitDetailsDto dto, GeoUnit target) {
         target.setCode(dto.code());
         target.setName(dto.name());
@@ -73,5 +55,18 @@ public final class GeoUnitMapper {
         target.setNuts3Code(dto.nuts3Code());
         target.setAreaHa(dto.areaHa());
         target.setPerimeterKm(dto.perimeterKm());
+    }
+
+    public static GeoUnitSummaryDto toSummaryDto(GeoUnitSummaryProjection projection) {
+        return new GeoUnitSummaryDto(
+                projection.getCode(),
+                projection.getName(),
+                GeoUnitType.fromValue(projection.getType()),
+                projection.getParentCode()
+        );
+    }
+
+    public static List<GeoUnitSummaryDto> toSummaryDtoList(List<GeoUnitSummaryProjection> projections) {
+        return projections.stream().map(GeoUnitMapper::toSummaryDto).toList();
     }
 }

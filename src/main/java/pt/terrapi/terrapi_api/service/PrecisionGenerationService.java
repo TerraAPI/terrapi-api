@@ -1,17 +1,12 @@
 package pt.terrapi.terrapi_api.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKBReader;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.entities.GeoUnitPrecision;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
@@ -20,22 +15,67 @@ import pt.terrapi.terrapi_api.repository.GeoUnitPrecisionRepository;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PrecisionGenerationService {
 
-    private static final WKBReader wkbReader = new WKBReader();
+    private static final String INSERT_LODS_SQL = """
+            WITH lods(lod, tolerance) AS (
+                VALUES %s
+            ),
+            base AS (
+                SELECT u.code,
+                       ST_Transform(u.geometry, 3763) AS geom_3763
+                FROM geo_units u
+                WHERE u.type = ?
+            ),
+            simplified AS (
+                SELECT b.code, l.lod, l.tolerance,
+                       ST_SimplifyPreserveTopology(b.geom_3763, l.tolerance) AS simplified_3763
+                FROM base b
+                CROSS JOIN lods l
+            )
+            INSERT INTO geo_unit_precisions
+                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
+                 generation_id, created_at, status)
+            SELECT code, ?, lod, ST_Transform(simplified_3763, 4326), tolerance,
+                   ST_NPoints(simplified_3763), ?, NOW(), 'ACTIVE'
+            FROM simplified
+            """;
+
+    private static final String VALIDATE_SQL = """
+            SELECT COALESCE(COUNT(*), 0) AS total_rows,
+                   COALESCE(COUNT(*) FILTER (WHERE geometry IS NULL), 0) AS null_count,
+                   COALESCE(COUNT(*) FILTER (WHERE NOT ST_IsValid(geometry)), 0) AS invalid_count,
+                   COALESCE(COUNT(*) FILTER (WHERE ST_IsEmpty(geometry)), 0) AS empty_count
+            FROM geo_unit_precisions
+            WHERE generation_id = ?
+            """;
+
+    private static final String DELETE_GENERATION_SQL =
+            "DELETE FROM geo_unit_precisions WHERE generation_id = ?";
 
     private final JdbcTemplate jdbcTemplate;
     private final PrecisionPolicyService policyService;
     private final PrecisionGenerationRepository generationRepository;
     private final GeoUnitPrecisionRepository precisionRepository;
     private final PrecisionProperties properties;
+
+    public PrecisionGenerationService(JdbcTemplate jdbcTemplate,
+                                      PrecisionPolicyService policyService,
+                                      PrecisionGenerationRepository generationRepository,
+                                      GeoUnitPrecisionRepository precisionRepository,
+                                      PrecisionProperties properties) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.policyService = policyService;
+        this.generationRepository = generationRepository;
+        this.precisionRepository = precisionRepository;
+        this.properties = properties;
+    }
 
     @Transactional
     public GenerationResult generate(GenerationType generationType) {
@@ -66,119 +106,87 @@ public class PrecisionGenerationService {
                                         GenerationType generationType, long t0) {
         List<GeoUnitType> targetTypes = resolveTypes(generationType);
 
-        List<GeoUnitPrecision> precisions = new ArrayList<>();
-        long expectedRowCount = 0;
         int totalLodDefs = 0;
+        long expectedRowCount = 0;
 
-        log.info("  Computing LODs...");
+        log.info("  Counting units...");
         for (GeoUnitType type : targetTypes) {
             List<LodLevel> levels = policyService.getLodLevels(type);
             if (levels.isEmpty()) continue;
-
             totalLodDefs += levels.size();
             Long unitCount = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM geo_units WHERE type = ?",
                     Long.class, type.getValue());
             long count = unitCount != null ? unitCount : 0;
             expectedRowCount += count * levels.size();
-
-            long tType = System.currentTimeMillis();
-            for (LodLevel level : levels) {
-                precisions.addAll(computeLod(type, level, generationId));
-            }
-            log.info("    {}: {} units \u00d7 {} LODs = {} rows ({} ms)",
-                    type, count, levels.size(), count * levels.size(), System.currentTimeMillis() - tType);
         }
 
-        ValidationResult validation = validatePrecisions(precisions);
-        int totalRows = precisions.size();
+        log.info("  Deprecating old rows...");
+        precisionRepository.deprecateActiveByTypes(targetTypes);
+        precisionRepository.flush();
+
+        log.info("  Computing LODs...");
+        int totalRows = 0;
+        for (GeoUnitType type : targetTypes) {
+            List<LodLevel> levels = policyService.getLodLevels(type);
+            if (levels.isEmpty()) continue;
+            long tType = System.currentTimeMillis();
+            int rows = insertLods(type, levels, generationId);
+            totalRows += rows;
+            log.info("    {}: {} rows ({} ms)", type, rows, System.currentTimeMillis() - tType);
+        }
+
+        ValidationResult validation = validateGeneration(generationId);
         int totalUnits = totalLodDefs > 0 ? (int) expectedRowCount / totalLodDefs : 0;
+
+        if (validation == null) {
+            log.warn("Generation {} produced no rows (no LOD levels configured?)", generationId);
+            gen.setStatus(GenerationStatus.SUCCESS);
+            gen.updateCounters(0, 0, 0, 0, 0);
+            generationRepository.save(gen);
+            return new GenerationResult(generationId, GenerationStatus.SUCCESS, 0);
+        }
 
         if (!validation.isHealthy(properties, expectedRowCount)) {
             log.error("Generation {} FAILED — rows={} expected={} null={}% invalid={}% empty={}%",
-                    generationId, totalRows, expectedRowCount,
+                    generationId, validation.totalRows, expectedRowCount,
                     validation.nullPct(), validation.invalidPct(), validation.emptyPct());
             gen.setStatus(GenerationStatus.FAILED);
-            gen.updateCounters(totalRows, validation.nullCount(), validation.invalidCount(), totalUnits, totalLodDefs);
+            gen.updateCounters(validation.totalRows, validation.nullCount, validation.invalidCount,
+                    totalUnits, totalLodDefs);
             generationRepository.save(gen);
-            return new GenerationResult(generationId, GenerationStatus.FAILED, totalRows);
+            jdbcTemplate.update(DELETE_GENERATION_SQL, generationId);
+            return new GenerationResult(generationId, GenerationStatus.FAILED, validation.totalRows);
         }
 
-        log.info("  Deprecating old rows, saving {} new rows...", totalRows);
-        precisionRepository.deprecateActiveByTypes(targetTypes);
-        precisionRepository.flush();
-        precisionRepository.saveAll(precisions);
-
         gen.setStatus(GenerationStatus.SUCCESS);
-        gen.updateCounters(totalRows, validation.nullCount(), validation.invalidCount(), totalUnits, totalLodDefs);
+        gen.updateCounters(validation.totalRows, validation.nullCount, validation.invalidCount,
+                totalUnits, totalLodDefs);
         generationRepository.save(gen);
 
         log.info("Generation {} SUCCESS — {} rows in {} ms",
-                generationId, totalRows, System.currentTimeMillis() - t0);
+                generationId, validation.totalRows, System.currentTimeMillis() - t0);
 
-        return new GenerationResult(generationId, GenerationStatus.SUCCESS, totalRows);
+        return new GenerationResult(generationId, GenerationStatus.SUCCESS, validation.totalRows);
     }
 
-    private List<GeoUnitPrecision> computeLod(GeoUnitType type, LodLevel level, UUID generationId) {
-        String sql = """
-                SELECT u.code,
-                       ST_AsBinary(
-                           ST_SetSRID(
-                               ST_SimplifyPreserveTopology(ST_SetSRID(u.geometry, 3763), ?),
-                               4326
-                           )
-                       ) AS geometry,
-                       ST_NPoints(
-                           ST_SimplifyPreserveTopology(ST_SetSRID(u.geometry, 3763), ?)
-                       ) AS vertex_count
-                FROM geo_units u
-                WHERE u.type = ?
-                """;
-        return jdbcTemplate.query(sql, rowMapper(type, level, generationId),
-                level.tolerance(), level.tolerance(), type.getValue());
+    private int insertLods(GeoUnitType type, List<LodLevel> levels, UUID generationId) {
+        if (levels.isEmpty()) return 0;
+        String valuesClause = levels.stream()
+                .map(l -> String.format("(%d, %.1f)", l.lod(), l.tolerance()))
+                .collect(Collectors.joining(", "));
+        String sql = String.format(INSERT_LODS_SQL, valuesClause);
+        return jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
     }
 
-    private RowMapper<GeoUnitPrecision> rowMapper(GeoUnitType type, LodLevel level, UUID generationId) {
-        return (rs, rowNum) -> {
-            GeoUnitPrecision p = new GeoUnitPrecision();
-            p.setGeoUnitCode(rs.getString("code"));
-            p.setType(type);
-            p.setLod(level.lod());
-            p.setToleranceM(level.tolerance());
-            p.setVertexCount(rs.getInt("vertex_count"));
-            p.setGenerationId(generationId);
-            p.setCreatedAt(Instant.now());
-            p.setStatus("ACTIVE");
-
-            byte[] wkb = rs.getBytes("geometry");
-            if (wkb != null) {
-                try {
-                    p.setGeometry(wkbReader.read(wkb));
-                } catch (ParseException e) {
-                    throw new RuntimeException("Failed to parse WKB for geo unit " + p.getGeoUnitCode(), e);
-                }
-            }
-            return p;
-        };
-    }
-
-    private ValidationResult validatePrecisions(List<GeoUnitPrecision> precisions) {
-        int totalRows = precisions.size();
-        int nullCount = 0;
-        int invalidCount = 0;
-        int emptyCount = 0;
-
-        for (GeoUnitPrecision p : precisions) {
-            var g = p.getGeometry();
-            if (g == null) {
-                nullCount++;
-            } else {
-                if (!g.isValid()) invalidCount++;
-                if (g.isEmpty()) emptyCount++;
-            }
-        }
-
-        return new ValidationResult(totalRows, nullCount, invalidCount, emptyCount);
+    private ValidationResult validateGeneration(UUID generationId) {
+        return jdbcTemplate.queryForObject(VALIDATE_SQL,
+                (rs, rowNum) -> new ValidationResult(
+                        rs.getInt("total_rows"),
+                        rs.getInt("null_count"),
+                        rs.getInt("invalid_count"),
+                        rs.getInt("empty_count")),
+                generationId);
     }
 
     private static List<GeoUnitType> resolveTypes(GenerationType generationType) {
@@ -188,7 +196,7 @@ public class PrecisionGenerationService {
         return List.of(GeoUnitType.valueOf(generationType.name()));
     }
 
-    private record ValidationResult(int totalRows, int nullCount, int invalidCount, int emptyCount) {
+    record ValidationResult(int totalRows, int nullCount, int invalidCount, int emptyCount) {
 
         double nullPct() {
             return totalRows > 0 ? 100.0 * nullCount / totalRows : 0;

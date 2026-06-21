@@ -14,13 +14,13 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
 @RestController
-@RequestMapping("/api/v1/admin")
-@Tag(name = "Administrative Hierarchy", description = "Fixed endpoints for District > Municipality > Parish hierarchy")
-public class AdminController {
+@RequestMapping("/api/v1/hierarchy")
+@Tag(name = "Territorial Hierarchies", description = "Fixed endpoints for the administrative (District > Municipality > Parish) and statistical (NUTS1 > NUTS2 > NUTS3) hierarchies")
+public class HierarchyController {
 
     private final GeoUnitQueryService geoUnitQueryService;
 
-    public AdminController(GeoUnitQueryService geoUnitQueryService) {
+    public HierarchyController(GeoUnitQueryService geoUnitQueryService) {
         this.geoUnitQueryService = geoUnitQueryService;
     }
 
@@ -28,17 +28,6 @@ public class AdminController {
     @Operation(summary = "List all districts")
     public ResponseEntity<List<GeoUnitSummaryDto>> listDistricts() {
         return ResponseEntity.ok(geoUnitQueryService.findAllByType(GeoUnitType.DISTRICT));
-    }
-
-    @GetMapping("/districts/{code}")
-    @Operation(summary = "Get district by code")
-    public ResponseEntity<GeoUnitSummaryDto> getDistrict(
-            @Parameter(description = "District code (DICOFRE)")
-            @PathVariable String code) {
-        return geoUnitQueryService.findByIdSummary(code)
-                .filter(d -> d.type() == GeoUnitType.DISTRICT)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/districts/{code}/municipalities")
@@ -63,17 +52,6 @@ public class AdminController {
         return ResponseEntity.ok(geoUnitQueryService.findAllByType(GeoUnitType.MUNICIPALITY));
     }
 
-    @GetMapping("/municipalities/{code}")
-    @Operation(summary = "Get municipality by code")
-    public ResponseEntity<GeoUnitSummaryDto> getMunicipality(
-            @Parameter(description = "Municipality code (DICOFRE)")
-            @PathVariable String code) {
-        return geoUnitQueryService.findByIdSummary(code)
-                .filter(d -> d.type() == GeoUnitType.MUNICIPALITY)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
     @GetMapping("/municipalities/{code}/parishes")
     @Operation(summary = "List parishes in a municipality")
     public ResponseEntity<List<GeoUnitSummaryDto>> listParishesByMunicipality(
@@ -82,14 +60,47 @@ public class AdminController {
         return ResponseEntity.ok(geoUnitQueryService.findChildrenOfType(code, GeoUnitType.PARISH));
     }
 
-    @GetMapping("/parishes/{code}")
-    @Operation(summary = "Get parish by code")
-    public ResponseEntity<GeoUnitSummaryDto> getParish(
-            @Parameter(description = "Parish code (DICOFRE)")
+    @GetMapping("/nuts1")
+    @Operation(summary = "List all NUTS1 units")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listNuts1() {
+        return ResponseEntity.ok(geoUnitQueryService.findAllByType(GeoUnitType.NUTS1));
+    }
+
+    @GetMapping("/nuts1/{code}/nuts2")
+    @Operation(summary = "List NUTS2 units in a NUTS1 unit")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listNuts2ByNuts1(
+            @Parameter(description = "NUTS1 code")
             @PathVariable String code) {
-        return geoUnitQueryService.findByIdSummary(code)
-                .filter(d -> d.type() == GeoUnitType.PARISH)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(geoUnitQueryService.findChildrenOfType(code, GeoUnitType.NUTS2));
+    }
+
+    @GetMapping("/nuts1/{code}/nuts3")
+    @Operation(summary = "List NUTS3 units in a NUTS1 unit")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listNuts3ByNuts1(
+            @Parameter(description = "NUTS1 code")
+            @PathVariable String code) {
+        return ResponseEntity.ok(geoUnitQueryService.findGrandchildrenOfType(code, GeoUnitType.NUTS3));
+    }
+
+    @GetMapping("/nuts2")
+    @Operation(summary = "List all NUTS2 units")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listNuts2() {
+        return ResponseEntity.ok(geoUnitQueryService.findAllByType(GeoUnitType.NUTS2));
+    }
+
+    @GetMapping("/nuts2/{code}/nuts3")
+    @Operation(summary = "List NUTS3 units in a NUTS2 unit")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listNuts3ByNuts2(
+            @Parameter(description = "NUTS2 code")
+            @PathVariable String code) {
+        return ResponseEntity.ok(geoUnitQueryService.findChildrenOfType(code, GeoUnitType.NUTS3));
+    }
+
+    @GetMapping("/nuts3/{code}/municipalities")
+    @Operation(summary = "List municipalities in a NUTS3 unit")
+    public ResponseEntity<List<GeoUnitSummaryDto>> listMunicipalitiesByNuts3(
+            @Parameter(description = "NUTS3 code")
+            @PathVariable String code) {
+        return ResponseEntity.ok(geoUnitQueryService.findMunicipalitiesByNuts3(code));
     }
 }

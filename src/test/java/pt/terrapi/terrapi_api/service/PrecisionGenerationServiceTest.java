@@ -3,7 +3,6 @@ package pt.terrapi.terrapi_api.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.locationtech.jts.geom.Geometry;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,7 +13,6 @@ import org.springframework.jdbc.core.RowMapper;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.entities.GeoUnitPrecision;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
@@ -22,7 +20,6 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.GeoUnitPrecisionRepository;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,24 +54,38 @@ class PrecisionGenerationServiceTest {
         when(properties.getValidation()).thenReturn(validation);
     }
 
+    private void stubCount(GeoUnitType type, long count) {
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), eq(type.getValue())))
+                .thenReturn(count);
+    }
+
+    private void stubInsertLods(int rowCount) {
+        when(jdbcTemplate.update(anyString(), any(), any(), any())).thenReturn(rowCount);
+    }
+
+    private void stubInsertLodsThrows(RuntimeException e) {
+        when(jdbcTemplate.update(anyString(), any(), any(), any())).thenThrow(e);
+    }
+
+    private void stubValidation(int totalRows, int nullCount, int invalidCount, int emptyCount) {
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any()))
+                .thenReturn(new PrecisionGenerationService.ValidationResult(
+                        totalRows, nullCount, invalidCount, emptyCount));
+    }
+
     @Test
     void generate_singleType_success() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(5L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(5, true, false);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.DISTRICT, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 0);
 
         GenerationResult result = service.generate(GenerationType.DISTRICT);
 
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
         assertThat(result.rowCount()).isEqualTo(5);
-
         verify(precisionRepository).deprecateActiveByTypes(List.of(GeoUnitType.DISTRICT));
-        verify(precisionRepository).saveAll(precisions);
         verify(generationRepository).save(any(PrecisionGeneration.class));
     }
 
@@ -82,19 +93,14 @@ class PrecisionGenerationServiceTest {
     void generate_tooManyInvalid_returnsFailed() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.MUNICIPALITY)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(10L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(10, false, false);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.MUNICIPALITY, 10);
+        stubInsertLods(10);
+        stubValidation(10, 0, 3, 0);
 
         GenerationResult result = service.generate(GenerationType.MUNICIPALITY);
 
         assertThat(result.status()).isEqualTo(GenerationStatus.FAILED);
         assertThat(result.rowCount()).isEqualTo(10);
-
-        verify(precisionRepository, never()).saveAll(any());
     }
 
     @Test
@@ -103,13 +109,9 @@ class PrecisionGenerationServiceTest {
 
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.PARISH)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(5L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(3, true, false);
-        precisions.addAll(buildNullPrecisions(2));
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.PARISH, 5);
+        stubInsertLods(5);
+        stubValidation(5, 2, 0, 0);
 
         GenerationResult result = service.generate(GenerationType.PARISH);
 
@@ -123,12 +125,9 @@ class PrecisionGenerationServiceTest {
 
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.ISLAND)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(5L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(5, true, true);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.ISLAND, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 5);
 
         GenerationResult result = service.generate(GenerationType.ISLAND);
 
@@ -139,12 +138,9 @@ class PrecisionGenerationServiceTest {
     void generate_rowCountMismatch_returnsFailed() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.NUTS1)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(10L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(7, true, false);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.NUTS1, 10);
+        stubInsertLods(7);
+        stubValidation(7, 0, 0, 0);
 
         GenerationResult result = service.generate(GenerationType.NUTS1);
 
@@ -156,16 +152,13 @@ class PrecisionGenerationServiceTest {
     void generate_jdbcThrows_returnsFailed() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(5L);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenThrow(new RuntimeException("SQL error"));
+        stubCount(GeoUnitType.DISTRICT, 5);
+        stubInsertLodsThrows(new RuntimeException("SQL error"));
 
         GenerationResult result = service.generate(GenerationType.DISTRICT);
 
         assertThat(result.status()).isEqualTo(GenerationStatus.FAILED);
         assertThat(result.rowCount()).isEqualTo(0);
-
         verify(generationRepository).save(any(PrecisionGeneration.class));
     }
 
@@ -184,19 +177,15 @@ class PrecisionGenerationServiceTest {
         List<LodLevel> lods = List.of(new LodLevel(1, 100.0));
         for (GeoUnitType type : GeoUnitType.values()) {
             when(policyService.getLodLevels(type)).thenReturn(lods);
+            stubCount(type, 3);
         }
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(3L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(3, true, false);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubInsertLods(3);
+        stubValidation(21, 0, 0, 0);
 
         GenerationResult result = service.generate(GenerationType.ALL);
 
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
         assertThat(result.rowCount()).isEqualTo(21);
-
         verify(precisionRepository).deprecateActiveByTypes(List.of(GeoUnitType.values()));
     }
 
@@ -204,13 +193,9 @@ class PrecisionGenerationServiceTest {
     void generate_mixedValidAndInvalid_withinThreshold_success() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(8L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(6, true, false);
-        precisions.addAll(buildPrecisions(2, false, false));
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.DISTRICT, 8);
+        stubInsertLods(8);
+        stubValidation(8, 0, 2, 0);
 
         GenerationResult result = service.generate(GenerationType.DISTRICT);
 
@@ -234,47 +219,13 @@ class PrecisionGenerationServiceTest {
     void generationResult_recordsGenerationId() {
         LodLevel lod = new LodLevel(1, 100.0);
         when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), any()))
-                .thenReturn(1L);
-
-        List<GeoUnitPrecision> precisions = buildPrecisions(1, true, false);
-        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(), any(), any()))
-                .thenReturn(precisions);
+        stubCount(GeoUnitType.DISTRICT, 1);
+        stubInsertLods(1);
+        stubValidation(1, 0, 0, 0);
 
         GenerationResult result = service.generate(GenerationType.DISTRICT);
 
         assertThat(result.generationId()).isNotNull();
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
-    }
-
-    private static List<GeoUnitPrecision> buildPrecisions(int count, boolean valid, boolean empty) {
-        List<GeoUnitPrecision> list = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            GeoUnitPrecision p = new GeoUnitPrecision();
-            p.setGeoUnitCode(String.format("%06d", i));
-            p.setType(GeoUnitType.DISTRICT);
-            p.setLod(1);
-            p.setToleranceM(100.0);
-            p.setVertexCount(50);
-
-            Geometry geom = org.mockito.Mockito.mock(Geometry.class);
-            org.mockito.Mockito.when(geom.isValid()).thenReturn(valid);
-            org.mockito.Mockito.when(geom.isEmpty()).thenReturn(empty);
-            p.setGeometry(geom);
-
-            list.add(p);
-        }
-        return list;
-    }
-
-    private static List<GeoUnitPrecision> buildNullPrecisions(int count) {
-        List<GeoUnitPrecision> list = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            GeoUnitPrecision p = new GeoUnitPrecision();
-            p.setGeoUnitCode(String.format("%06d", i));
-            p.setGeometry(null);
-            list.add(p);
-        }
-        return list;
     }
 }

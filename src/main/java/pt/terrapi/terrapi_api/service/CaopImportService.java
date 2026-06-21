@@ -152,7 +152,7 @@ public class CaopImportService {
         jdbcTemplate.batchUpdate("""
                 INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
                                        type, parent_code, simplified_name, nuts3_code)
-                VALUES (?, ?, ST_Transform(ST_SetSRID(ST_GeomFromWKB(?::bytea), ?), 4326),
+                VALUES (?, ?, ST_Transform(ST_GeomFromWKB(?, ?), 4326),
                         ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (code) DO UPDATE SET
                     name = EXCLUDED.name,
@@ -183,13 +183,13 @@ public class CaopImportService {
     }
 
     private void verifyGeometryIntegration() {
-        Integer srid = jdbcTemplate.queryForObject(
-                "SELECT DISTINCT ST_SRID(geometry) FROM geo_units WHERE geometry IS NOT NULL LIMIT 1",
-                Integer.class);
-        if (srid == null || srid != 4326) {
-            log.error("Geometry SRID verification failed: expected 4326, got {}", srid);
+        Long wrongSrid = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM geo_units WHERE geometry IS NOT NULL AND ST_SRID(geometry) <> 4326",
+                Long.class);
+        if (wrongSrid == null || wrongSrid > 0) {
+            log.error("Geometry SRID verification failed: {} rows with SRID != 4326", wrongSrid);
             throw new IllegalStateException(
-                    "Geometry SRID is " + srid + ", expected 4326. CRS transform may have failed.");
+                    "Geometry SRID mismatch: " + wrongSrid + " rows not in 4326. CRS transform may have failed.");
         }
 
         var outOfBounds = jdbcTemplate.queryForList("""

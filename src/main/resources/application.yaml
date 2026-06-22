@@ -32,8 +32,6 @@ terrapi:
         tolerance: 50
       - lod: 2
         tolerance: 200
-      - lod: 3
-        tolerance: 800
     validation:
       max-null-pct: 0.5
       max-invalid-pct: 25.0

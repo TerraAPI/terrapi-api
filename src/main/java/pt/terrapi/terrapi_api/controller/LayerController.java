@@ -32,13 +32,13 @@ public class LayerController {
 
     @GetMapping("/{type}")
     @Operation(summary = "Get all units of a type as a GeoJSON FeatureCollection for selection",
-            description = "Selection-grade simplified geometry (LOD 0 = most detailed, 3 = coarsest). "
+            description = "Selection-grade simplified geometry (LOD 0 = most detailed, 2 = coarsest). "
                     + "Fetch the precise boundary of a chosen unit via the per-unit geometry endpoint.")
     public ResponseEntity<String> getLayer(
             @Parameter(description = "Unit type (DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3)")
             @PathVariable GeoUnitType type,
-            @Parameter(description = "Precision LOD level (0 = most detailed, 3 = coarsest)")
-            @RequestParam(defaultValue = "3") int lod,
+            @Parameter(description = "Precision LOD level (0 = most detailed, 2 = coarsest)")
+            @RequestParam(defaultValue = "2") int lod,
             @Parameter(description = "Optional parent code to return only that parent's children")
             @RequestParam(required = false) String parent,
             HttpServletRequest request) {

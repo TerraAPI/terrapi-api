@@ -24,6 +24,9 @@ spring:
 
 terrapi:
   precision:
+    topology-preserving: true
+    simplify-boundary: false
+    coverage-snap-tolerance: 0.0
     lod:
       PARISH:
         - lod: 1

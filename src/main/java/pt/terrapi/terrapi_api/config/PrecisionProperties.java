@@ -17,6 +17,11 @@ public class PrecisionProperties {
     private Map<String, List<LodLevel>> lod;
     private Validation validation = new Validation();
 
+    private boolean topologyPreserving = true;
+    private boolean simplifyBoundary = false;
+    private double coverageSnapTolerance = 0.0;
+    private Map<String, Boolean> topologyPreservingByType;
+
     @Getter
     @Setter
     public static class Validation {

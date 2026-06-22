@@ -20,9 +20,10 @@ public final class RowMappers {
         e.setPerimeterKm(rs.getDouble("perimetro_km"));
     }
 
-    private static Geometry readGeometry(byte[] gpkgBlob) {
+    static Geometry readGeometry(byte[] gpkgBlob) {
         if (gpkgBlob == null) return null;
         byte[] wkb = stripGpkgHeader(gpkgBlob);
+        if (wkb == null) return null;
         try {
             return WKB_READER.read(wkb);
         } catch (Exception e) {
@@ -34,7 +35,7 @@ public final class RowMappers {
         int flags = gpkgBlob[3] & 0xFF;
 
         if ((flags & 0x10) != 0) {
-            return new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
+            return null;
         }
 
         int offset = 8;

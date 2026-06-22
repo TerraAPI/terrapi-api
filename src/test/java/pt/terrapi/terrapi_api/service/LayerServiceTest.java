@@ -39,8 +39,8 @@ class LayerServiceTest {
     }
 
     @Test
-    void buildLayerSql_precisionPath_transformsAndHasNoParentFilter() {
-        String sql = LayerService.buildLayerSql(false, false);
+    void buildLayerSql_noParent_usesPrecisionsAndTransform() {
+        String sql = LayerService.buildLayerSql(false);
 
         assertThat(sql)
                 .contains("geo_unit_precisions")
@@ -50,18 +50,17 @@ class LayerServiceTest {
 
     @Test
     void buildLayerSql_withParent_addsParentFilter() {
-        String sql = LayerService.buildLayerSql(false, true);
+        String sql = LayerService.buildLayerSql(true);
 
-        assertThat(sql).contains("u.parent_code = ?");
+        assertThat(sql)
+                .contains("geo_unit_precisions")
+                .contains("u.parent_code = ?");
     }
 
     @Test
-    void buildLayerSql_original_usesGeoUnitsSource() {
-        String sql = LayerService.buildLayerSql(true, false);
-
-        assertThat(sql)
-                .contains("FROM geo_units")
-                .doesNotContain("geo_unit_precisions");
+    void buildLayerSql_neverReadsOriginalGeoUnitsTable() {
+        assertThat(LayerService.buildLayerSql(false)).doesNotContain("FROM geo_units u\n");
+        assertThat(LayerService.buildLayerSql(true)).doesNotContain("FROM geo_units u\n");
     }
 
     @Test

@@ -86,3 +86,32 @@ Vector tiles (MVT) were removed: at Portugal's feature counts (≤ ~3k parishes 
 far fewer per parent) a single cached, simplified layer payload covers the selection,
 choropleth and export use cases without the per-tile complexity. The
 `geo_unit_precisions` / LOD / coverage pipeline is retained as the grid's data source.
+
+## Layers vs borders, and why layers are not nested
+
+There are two geometry-serving surfaces, kept deliberately separate:
+
+- **`/api/v1/layers/{type}`** — independently coverage-simplified polygon *fills*, with
+  per-type tolerances (parishes finer than districts). Used for selection and choropleth.
+- **`/api/v1/borders`** — the classified boundary-*line* network (CAOP `trocos`): each shared
+  edge carries `level` (1 national … 5 parish), `lineType` (LAND/COAST/WATER) and `lengthKm`,
+  and is drawn once. Used for boundary overlays / styling.
+
+### Why simplification is intra-layer only (Level 1)
+
+Each `GeoUnitType` is simplified as its own coverage, independently of the others. We do **not**
+nest layers (i.e. build coarser layers by dissolving finer ones). Full cross-layer nesting would
+make all levels share an identical edge graph — layers and borders would then be two views of one
+topology — but it **conflicts with per-layer LOD optimization**: a district boundary forced to
+equal the union of its parishes' edges can't be simplified below parish-edge density, so coarse
+layers would become much heavier. That would undo the per-type tolerance savings (districts are
+cheap precisely because they don't need parish precision).
+
+**Accepted consequence:** because fills and borders are simplified independently, a layer fill's
+outline and a border line are not pixel-coincident at high zoom. In practice borders are rendered
+*on top of* fills (or a basemap), so the border line is the authoritative visible edge; render
+fills without strokes if exact alignment is required.
+
+Note: even with full nesting, `/borders` would still be needed for its edge-level semantics
+(`level`, and especially the coastline/water `lineType`, which is **not** derivable from admin
+polygons) and as a single-stroke rendering primitive.

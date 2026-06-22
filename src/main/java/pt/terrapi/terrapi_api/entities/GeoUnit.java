@@ -72,4 +72,9 @@ public class GeoUnit {
      * Number of child parishes (DISTRICT, ISLAND, MUNICIPALITY, NUTS levels); null for parishes.
      */
     private Integer parishCount;
+
+    /**
+     * Total coastline length in kilometers (derived from boundary arcs); null if landlocked.
+     */
+    private Double coastlineKm;
 }

@@ -25,6 +25,7 @@ public final class GeoUnitMapper {
                 entity.getPerimeterKm(),
                 entity.getMunicipalityCount(),
                 entity.getParishCount(),
+                entity.getCoastlineKm(),
                 point != null ? point.getX() : null,
                 point != null ? point.getY() : null
         );

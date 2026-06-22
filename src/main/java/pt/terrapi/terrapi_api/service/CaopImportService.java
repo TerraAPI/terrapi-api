@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pt.terrapi.terrapi_api.dto.ImportResult;
+import pt.terrapi.terrapi_api.entities.BorderSegment;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
@@ -53,25 +55,38 @@ public class CaopImportService {
         }
 
         log.info("Importing {} .gpkg files from {}", files.length, folderPath);
+        clearAuxData();
         ImportResult total = ImportResult.empty();
         for (File file : files) {
             total = total.add(doImport(file.getAbsolutePath()));
         }
         log.info("Import finished — {}", total.counts());
 
-        updateRepresentativePoints();
+        finalizeImport();
         triggerGeneration();
         return total;
     }
 
     @Transactional
     public ImportResult importGpkg(String filePath) {
+        clearAuxData();
         ImportResult result = doImport(filePath);
         log.info("Import finished — {}", result.counts());
 
-        updateRepresentativePoints();
+        finalizeImport();
         triggerGeneration();
         return result;
+    }
+
+    private void clearAuxData() {
+        jdbcTemplate.update("DELETE FROM geo_unit_adjacency");
+        jdbcTemplate.update("DELETE FROM border_segments");
+    }
+
+    private void finalizeImport() {
+        updateRepresentativePoints();
+        buildAdjacency();
+        computeCoastline();
     }
 
     private void updateRepresentativePoints() {
@@ -121,6 +136,8 @@ public class CaopImportService {
             importDistricts(conn, prefix, counts, sourceEpsg);
             int adminCount = counts.values().stream().mapToInt(Integer::intValue).sum() - statCount;
             log.info("  Admin units imported: {} records ({} ms)", adminCount, System.currentTimeMillis() - t2);
+
+            importTrocos(conn, prefix, sourceEpsg);
 
             verifyGeometryIntegration();
 
@@ -348,6 +365,118 @@ public class CaopImportService {
         }
         persistBatch(batch, sourceEpsg);
         counts.merge(GeoUnitType.PARISH.name(), batch.size(), Integer::sum);
+    }
+
+    private void importTrocos(Connection conn, String prefix, int sourceEpsg) throws Exception {
+        String table = prefix + "trocos";
+        if (!tableExists(conn, table)) return;
+        var batch = new ArrayList<BorderSegment>();
+        try (var stmt = conn.createStatement();
+             var rs = stmt.executeQuery("SELECT geom, ea_direita, ea_esquerda, "
+                     + "nivel_limite_admin, significado_linha, comprimento_km FROM " + table)) {
+            while (rs.next()) {
+                batch.add(RowMappers.mapBorderSegment(rs));
+            }
+        }
+        persistBorderBatch(batch, sourceEpsg);
+        log.info("  Border segments imported: {} ({})", batch.size(), prefix);
+    }
+
+    private void persistBorderBatch(List<BorderSegment> batch, int sourceEpsg) {
+        if (batch.isEmpty()) return;
+        jdbcTemplate.batchUpdate("""
+                INSERT INTO border_segments (geometry, level, line_type, ea_right, ea_left, length_km)
+                VALUES (ST_Transform(ST_GeomFromWKB(?, ?), 4326), ?, ?, ?, ?, ?)
+                """, batch, 100, (ps, b) -> {
+            byte[] wkb = b.getGeometry() != null ? WKB_WRITER.write(b.getGeometry()) : null;
+            if (wkb != null) {
+                ps.setBytes(1, wkb);
+            } else {
+                ps.setNull(1, java.sql.Types.NULL);
+            }
+            ps.setInt(2, sourceEpsg);
+            ps.setObject(3, b.getLevel());
+            ps.setString(4, b.getLineType());
+            ps.setString(5, b.getEaRight());
+            ps.setString(6, b.getEaLeft());
+            ps.setObject(7, b.getLengthKm());
+        });
+    }
+
+    private void buildAdjacency() {
+        jdbcTemplate.update("""
+                WITH pairs AS (
+                    SELECT DISTINCT ea_right AS a, ea_left AS b
+                    FROM border_segments
+                    WHERE ea_right ~ '^[0-9]{6}$' AND ea_left ~ '^[0-9]{6}$' AND ea_right <> ea_left
+                )
+                INSERT INTO geo_unit_adjacency (code, neighbour_code)
+                SELECT a, b FROM pairs UNION SELECT b, a FROM pairs
+                ON CONFLICT DO NOTHING
+                """);
+        jdbcTemplate.update("""
+                WITH pairs AS (
+                    SELECT DISTINCT g1.parent_code AS a, g2.parent_code AS b
+                    FROM border_segments s
+                    JOIN geo_units g1 ON g1.code = s.ea_right
+                    JOIN geo_units g2 ON g2.code = s.ea_left
+                    WHERE s.ea_right ~ '^[0-9]{6}$' AND s.ea_left ~ '^[0-9]{6}$'
+                      AND g1.parent_code IS NOT NULL AND g2.parent_code IS NOT NULL
+                      AND g1.parent_code <> g2.parent_code
+                )
+                INSERT INTO geo_unit_adjacency (code, neighbour_code)
+                SELECT a, b FROM pairs UNION SELECT b, a FROM pairs
+                ON CONFLICT DO NOTHING
+                """);
+        jdbcTemplate.update("""
+                WITH pairs AS (
+                    SELECT DISTINCT m1.parent_code AS a, m2.parent_code AS b
+                    FROM border_segments s
+                    JOIN geo_units g1 ON g1.code = s.ea_right
+                    JOIN geo_units g2 ON g2.code = s.ea_left
+                    JOIN geo_units m1 ON m1.code = g1.parent_code
+                    JOIN geo_units m2 ON m2.code = g2.parent_code
+                    WHERE s.ea_right ~ '^[0-9]{6}$' AND s.ea_left ~ '^[0-9]{6}$'
+                      AND m1.parent_code IS NOT NULL AND m2.parent_code IS NOT NULL
+                      AND m1.parent_code <> m2.parent_code
+                )
+                INSERT INTO geo_unit_adjacency (code, neighbour_code)
+                SELECT a, b FROM pairs UNION SELECT b, a FROM pairs
+                ON CONFLICT DO NOTHING
+                """);
+        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM geo_unit_adjacency", Long.class);
+        log.info("  Adjacency pairs built: {}", count);
+    }
+
+    private void computeCoastline() {
+        jdbcTemplate.update("""
+                UPDATE geo_units g SET coastline_km = sub.km FROM (
+                    SELECT code, SUM(length_km) AS km FROM (
+                        SELECT ea_right AS code, length_km FROM border_segments
+                         WHERE line_type = 'COAST' AND ea_right ~ '^[0-9]{6}$'
+                        UNION ALL
+                        SELECT ea_left AS code, length_km FROM border_segments
+                         WHERE line_type = 'COAST' AND ea_left ~ '^[0-9]{6}$'
+                    ) x GROUP BY code
+                ) sub WHERE g.code = sub.code
+                """);
+        jdbcTemplate.update("""
+                UPDATE geo_units m SET coastline_km = sub.km FROM (
+                    SELECT parent_code AS code, SUM(coastline_km) AS km
+                    FROM geo_units
+                    WHERE type = 3 AND coastline_km IS NOT NULL AND parent_code IS NOT NULL
+                    GROUP BY parent_code
+                ) sub WHERE m.code = sub.code
+                """);
+        jdbcTemplate.update("""
+                UPDATE geo_units d SET coastline_km = sub.km FROM (
+                    SELECT parent_code AS code, SUM(coastline_km) AS km
+                    FROM geo_units
+                    WHERE type = 2 AND coastline_km IS NOT NULL AND parent_code IS NOT NULL
+                    GROUP BY parent_code
+                ) sub WHERE d.code = sub.code
+                """);
+        log.info("  Coastline lengths computed");
     }
 
     private static String selectSql(String table, String[] columns) {

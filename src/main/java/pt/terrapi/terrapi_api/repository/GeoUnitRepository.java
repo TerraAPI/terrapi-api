@@ -115,4 +115,16 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
             + " LEFT JOIN gu.parent p WHERE gu.nuts3Code = :nuts3Code ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByNuts3Code(@Param("nuts3Code") String nuts3Code);
+
+    @Query(value = """
+            SELECT g.code AS code,
+                   COALESCE(g.simplified_name, g.name) AS name,
+                   g.type AS type,
+                   g.parent_code AS parentCode
+            FROM geo_unit_adjacency a
+            JOIN geo_units g ON g.code = a.neighbour_code
+            WHERE a.code = :code
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findNeighbours(@Param("code") String code);
 }

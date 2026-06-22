@@ -51,6 +51,13 @@ public class GeoUnitQueryService {
         return geoUnitRepository.findSummaryListByParentCode(code);
     }
 
+    public List<GeoUnitSummaryDto> findNeighbours(String code) {
+        if (!geoUnitRepository.existsById(code)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
+        }
+        return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findNeighbours(code));
+    }
+
     public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
         return geoUnitRepository.findSummaryListByType(type);
     }

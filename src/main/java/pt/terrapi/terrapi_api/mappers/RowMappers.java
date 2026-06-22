@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.WKBReader;
+import pt.terrapi.terrapi_api.entities.BorderSegment;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -13,6 +14,35 @@ public final class RowMappers {
     private static final WKBReader WKB_READER = new WKBReader();
 
     private RowMappers() {}
+
+    public static BorderSegment mapBorderSegment(ResultSet rs) throws SQLException {
+        BorderSegment b = new BorderSegment();
+        b.setGeometry(readGeometry(rs.getBytes("geom")));
+        b.setEaRight(rs.getString("ea_direita"));
+        b.setEaLeft(rs.getString("ea_esquerda"));
+        b.setLevel(parseLevel(rs.getString("nivel_limite_admin")));
+        b.setLineType(parseLineType(rs.getString("significado_linha")));
+        double len = rs.getDouble("comprimento_km");
+        b.setLengthKm(rs.wasNull() ? null : len);
+        return b;
+    }
+
+    private static Integer parseLevel(String nivel) {
+        if (nivel == null) return null;
+        for (int i = 0; i < nivel.length(); i++) {
+            if (Character.isDigit(nivel.charAt(i))) {
+                return Character.getNumericValue(nivel.charAt(i));
+            }
+        }
+        return null;
+    }
+
+    private static String parseLineType(String significado) {
+        if (significado == null) return "LAND";
+        if (significado.contains("Costa")) return "COAST";
+        if (significado.contains("gua")) return "WATER";
+        return "LAND";
+    }
 
     private static void setGeo(GeoUnit e, ResultSet rs) throws SQLException {
         e.setGeometry(readGeometry(rs.getBytes("geom")));

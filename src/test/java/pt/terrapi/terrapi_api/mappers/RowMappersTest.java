@@ -5,6 +5,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.io.WKBWriter;
+import pt.terrapi.terrapi_api.entities.BorderSegment;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -66,5 +67,25 @@ class RowMappersTest {
         assertThat(u.getType()).isEqualTo(GeoUnitType.DISTRICT);
         assertThat(u.getMunicipalityCount()).isEqualTo(17);
         assertThat(u.getParishCount()).isNull();
+    }
+
+    @Test
+    void mapBorderSegment_parsesLevelAndLineType() throws Exception {
+        ResultSet rs = mock(ResultSet.class);
+        when(rs.getBytes("geom")).thenReturn(null);
+        when(rs.getString("ea_direita")).thenReturn("021111");
+        when(rs.getString("ea_esquerda")).thenReturn("99");
+        when(rs.getString("nivel_limite_admin")).thenReturn("3ª Ordem");
+        when(rs.getString("significado_linha")).thenReturn("Limite e Linha de Costa");
+        when(rs.getDouble("comprimento_km")).thenReturn(5.0);
+        when(rs.wasNull()).thenReturn(false);
+
+        BorderSegment b = RowMappers.mapBorderSegment(rs);
+
+        assertThat(b.getLevel()).isEqualTo(3);
+        assertThat(b.getLineType()).isEqualTo("COAST");
+        assertThat(b.getEaRight()).isEqualTo("021111");
+        assertThat(b.getEaLeft()).isEqualTo("99");
+        assertThat(b.getLengthKm()).isEqualTo(5.0);
     }
 }

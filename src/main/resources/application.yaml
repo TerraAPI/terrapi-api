@@ -37,8 +37,6 @@ terrapi:
           tolerance: 200
         - lod: 3
           tolerance: 800
-        - lod: 4
-          tolerance: 2500
       MUNICIPALITY:
         - lod: 0
           tolerance: 40
@@ -48,8 +46,6 @@ terrapi:
           tolerance: 500
         - lod: 3
           tolerance: 2000
-        - lod: 4
-          tolerance: 6000
       DISTRICT:
         - lod: 0
           tolerance: 80
@@ -59,8 +55,6 @@ terrapi:
           tolerance: 1000
         - lod: 3
           tolerance: 5000
-        - lod: 4
-          tolerance: 15000
       ISLAND:
         - lod: 0
           tolerance: 25
@@ -70,8 +64,6 @@ terrapi:
           tolerance: 500
         - lod: 3
           tolerance: 2000
-        - lod: 4
-          tolerance: 5000
       NUTS1:
         - lod: 0
           tolerance: 120
@@ -81,8 +73,6 @@ terrapi:
           tolerance: 2000
         - lod: 3
           tolerance: 10000
-        - lod: 4
-          tolerance: 30000
       NUTS2:
         - lod: 0
           tolerance: 80
@@ -92,8 +82,6 @@ terrapi:
           tolerance: 1000
         - lod: 3
           tolerance: 5000
-        - lod: 4
-          tolerance: 15000
       NUTS3:
         - lod: 0
           tolerance: 60
@@ -103,8 +91,6 @@ terrapi:
           tolerance: 800
         - lod: 3
           tolerance: 3000
-        - lod: 4
-          tolerance: 8000
     validation:
       max-null-pct: 0.5
       max-invalid-pct: 25.0

@@ -1,15 +1,15 @@
 # Precision (LOD) Design
 
-## The LOD ladder (0–4)
+## The LOD ladder (0–3)
 
-Each `GeoUnitType` is stored in `geo_unit_precisions` at five levels of detail:
+Each `GeoUnitType` is stored in `geo_unit_precisions` at four levels of detail:
 
 - **LOD 0** — *most detailed*. A small, **non-zero** tolerance (just above the data's native
   vertex spacing) so it is not a byte-for-byte duplicate of the original, yet visually
   ~full-detail. This is what makes it worth storing: it lets the whole-layer ("grid") endpoint
   serve a near-full-detail layer without ever shipping the multi-hundred-MB original.
-- **LOD 1–3** — progressively simplified.
-- **LOD 4** — *coarsest*, the lightest payload (used as the grid's default).
+- **LOD 1–2** — progressively simplified.
+- **LOD 3** — *coarsest*, the lightest payload (used as the grid's default).
 
 Tolerances are per type and configured under `terrapi.precision.lod` in `application.yaml`. They
 were chosen from the measured CAOP geometry scale (native vertex spacing ≈ 18–37 m on the
@@ -70,7 +70,7 @@ GET /api/v1/layers/{type}?lod={n}&parent={code}
 
 - Returns a GeoJSON `FeatureCollection` (`{code, name}` properties) for every unit of `type`.
 - Geometry always comes from `geo_unit_precisions` (transformed 3857 → 4326), for every LOD
-  including `lod 0` (most detailed). `lod 4` (coarsest) is the default. The original
+  including `lod 0` (most detailed). `lod 3` (coarsest) is the default. The original
   `geo_units` geometry is never served as a whole layer.
 - `parent` (optional) restricts to a parent's direct children (a district's municipalities,
   a municipality's parishes) for drill-down selection.

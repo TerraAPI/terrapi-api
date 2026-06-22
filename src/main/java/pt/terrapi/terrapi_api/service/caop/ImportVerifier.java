@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.caop;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.precision;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +14,7 @@ import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
-import pt.terrapi.terrapi_api.service.PrecisionWriter.WriteResult;
+import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.List;
 import java.util.UUID;

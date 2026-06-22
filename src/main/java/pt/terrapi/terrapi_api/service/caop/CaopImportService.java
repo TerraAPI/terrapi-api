@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.caop;
 
 import java.io.File;
 import java.util.HashMap;
@@ -14,7 +14,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GenerationType;
-import pt.terrapi.terrapi_api.service.CaopGpkgReader.GpkgData;
+import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
+import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
 /**
  * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) → write to PostGIS

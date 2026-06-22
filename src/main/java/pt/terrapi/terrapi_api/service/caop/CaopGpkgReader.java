@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.caop;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.precision;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

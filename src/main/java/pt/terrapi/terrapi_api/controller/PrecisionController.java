@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.enums.GenerationType;
-import pt.terrapi.terrapi_api.service.PrecisionGenerationService;
+import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
 @RestController
 @RequestMapping("/api/v1/precision")

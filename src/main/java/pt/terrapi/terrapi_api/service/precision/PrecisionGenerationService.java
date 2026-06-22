@@ -1,4 +1,4 @@
-package pt.terrapi.terrapi_api.service;
+package pt.terrapi.terrapi_api.service.precision;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -8,7 +8,7 @@ import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
-import pt.terrapi.terrapi_api.service.PrecisionWriter.WriteResult;
+import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
 import java.time.Instant;
 import java.util.List;

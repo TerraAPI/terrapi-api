@@ -63,3 +63,30 @@ Partitioning by `lod` makes each `(type, lod)` a single coverage and keeps the t
 ### Scope
 
 This preserves topology **within** each layer only. Cross-layer hierarchical nesting (a parish edge coinciding with its parent municipality edge) is out of scope.
+
+## Consumption: whole-layer selection grid
+
+The simplified precisions feed a whole-layer **"grid"** endpoint used for on-map selection
+(show all districts/municipalities/parishes, let the user click one):
+
+```
+GET /api/v1/layers/{type}?lod={n}&parent={code}
+```
+
+- Returns a GeoJSON `FeatureCollection` (`{code, name}` properties) for every unit of `type`.
+- `lod >= 1` → selection-grade simplified geometry from `geo_unit_precisions` (transformed
+  3857 → 4326); `lod = 0` → full detail from `geo_units`.
+- `parent` (optional) restricts to a parent's direct children (a district's municipalities,
+  a municipality's parishes) for drill-down selection.
+- Responses are cached and ETag'd by the active `generation_id` (immutable per generation),
+  the same invalidation key the precision pipeline produces.
+
+**Two-tier selection.** The grid ships *simplified* geometry (cheap, just for clicking and
+labelling). Once a unit is selected, its *precise* boundary is fetched on demand via the
+per-unit geometry endpoint (`GET /api/v1/geo/{code}/geometry`, LOD 0). This keeps grid
+payloads small while still allowing exact rendering of the chosen unit.
+
+Vector tiles (MVT) were removed: at Portugal's feature counts (≤ ~3k parishes nationally,
+far fewer per parent) a single cached, simplified layer payload covers the selection,
+choropleth and export use cases without the per-tile complexity. The
+`geo_unit_precisions` / LOD / coverage pipeline is retained as the grid's data source.

@@ -37,13 +37,13 @@ public class LayerService {
                     'geometry', ST_AsGeoJSON(ST_Transform(gp.geometry, 4326))::jsonb)), '[]'::jsonb))::text
             FROM geo_unit_precisions gp
             JOIN geo_units u ON u.code = gp.geo_unit_code
-            WHERE gp.type = ? AND gp.lod = ? AND gp.status = 'ACTIVE'
+            WHERE gp.type = ? AND gp.lod = ?
             """;
 
     private static final String GENERATION_ID_SQL = """
             SELECT generation_id::text
             FROM geo_unit_precisions
-            WHERE type = ? AND status = 'ACTIVE'
+            WHERE type = ?
             ORDER BY created_at DESC
             LIMIT 1
             """;

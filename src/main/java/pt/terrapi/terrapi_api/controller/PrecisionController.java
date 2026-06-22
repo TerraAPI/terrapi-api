@@ -27,8 +27,10 @@ public class PrecisionController {
     @Operation(summary = "Generate simplified geometries for specified unit types")
     public ResponseEntity<GenerationResult> generate(
             @Parameter(description = "Unit type: ALL, DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
-            @RequestParam(defaultValue = "ALL") GenerationType type) {
-        GenerationResult result = precisionGenerationService.generate(type);
+            @RequestParam(defaultValue = "ALL") GenerationType type,
+            @Parameter(description = "LOD level to (re)generate; omit to generate all configured LODs")
+            @RequestParam(required = false) Integer lod) {
+        GenerationResult result = precisionGenerationService.generate(type, lod);
         return ResponseEntity.ok(result);
     }
 }

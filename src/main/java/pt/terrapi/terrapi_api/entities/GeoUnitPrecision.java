@@ -22,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @Table(name = "geo_unit_precisions", indexes = {
-        @Index(name = "idx_gp_code_lod_status", columnList = "geo_unit_code, lod, status"),
+        @Index(name = "idx_gp_code_lod", columnList = "geo_unit_code, lod"),
         @Index(name = "idx_gp_generation_id", columnList = "generation_id")
 })
 public class GeoUnitPrecision {
@@ -55,16 +55,10 @@ public class GeoUnitPrecision {
     @Column(name = "created_at")
     private Instant createdAt;
 
-    @Column(length = 20)
-    private String status = "ACTIVE";
-
     @PrePersist
     void setDefaults() {
         if (createdAt == null) {
             createdAt = Instant.now();
-        }
-        if (status == null) {
-            status = "ACTIVE";
         }
     }
 }

@@ -1,6 +1,7 @@
 package pt.terrapi.terrapi_api.mappers;
 
 import java.util.List;
+import org.locationtech.jts.geom.Point;
 import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
@@ -12,6 +13,7 @@ public final class GeoUnitMapper {
     private GeoUnitMapper() {}
 
     public static GeoUnitDetailsDto toDetailedDto(GeoUnit entity) {
+        Point point = entity.getRepresentativePoint();
         return new GeoUnitDetailsDto(
                 entity.getCode(),
                 entity.getName(),
@@ -20,7 +22,11 @@ public final class GeoUnitMapper {
                 entity.getParent() != null ? toMinimalDto(entity.getParent()) : null,
                 entity.getNuts3Code(),
                 entity.getAreaHa(),
-                entity.getPerimeterKm()
+                entity.getPerimeterKm(),
+                entity.getMunicipalityCount(),
+                entity.getParishCount(),
+                point != null ? point.getX() : null,
+                point != null ? point.getY() : null
         );
     }
 

@@ -5,10 +5,15 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.io.WKBWriter;
+import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 import java.io.ByteArrayOutputStream;
+import java.sql.ResultSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class RowMappersTest {
 
@@ -42,5 +47,24 @@ class RowMappersTest {
         assertThat(result).isNotNull();
         assertThat(result.getCoordinate().x).isEqualTo(1);
         assertThat(result.getCoordinate().y).isEqualTo(2);
+    }
+
+    @Test
+    void mapRowDistrict_parsesCountsNullSafe() throws Exception {
+        ResultSet rs = mock(ResultSet.class);
+        when(rs.getString("dt")).thenReturn("11");
+        when(rs.getString("distrito")).thenReturn("Porto");
+        when(rs.getInt("n_municipios")).thenReturn(17);
+        when(rs.getInt("n_freguesias")).thenReturn(0);
+        when(rs.wasNull()).thenReturn(false, true);
+        when(rs.getBytes("geom")).thenReturn(null);
+        when(rs.getDouble("area_ha")).thenReturn(100.0);
+        when(rs.getDouble("perimetro_km")).thenReturn(50.0);
+
+        GeoUnit u = RowMappers.GeoUnitMapper.mapRowDistrict(rs, "cont_");
+
+        assertThat(u.getType()).isEqualTo(GeoUnitType.DISTRICT);
+        assertThat(u.getMunicipalityCount()).isEqualTo(17);
+        assertThat(u.getParishCount()).isNull();
     }
 }

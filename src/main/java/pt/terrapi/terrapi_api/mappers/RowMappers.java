@@ -20,6 +20,11 @@ public final class RowMappers {
         e.setPerimeterKm(rs.getDouble("perimetro_km"));
     }
 
+    private static Integer nullableInt(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
     static Geometry readGeometry(byte[] gpkgBlob) {
         if (gpkgBlob == null) return null;
         byte[] wkb = stripGpkgHeader(gpkgBlob);
@@ -61,11 +66,11 @@ public final class RowMappers {
         private GeoUnitMapper() {}
 
         public static String[] districtColumns() {
-            return new String[]{"dt", "distrito"};
+            return new String[]{"dt", "distrito", "n_municipios", "n_freguesias"};
         }
 
         public static String[] municipalityColumns() {
-            return new String[]{"dtmn", "municipio", "distrito_ilha", "nuts3_cod"};
+            return new String[]{"dtmn", "municipio", "distrito_ilha", "nuts3_cod", "n_freguesias"};
         }
 
         public static String[] parishColumns() {
@@ -73,15 +78,15 @@ public final class RowMappers {
         }
 
         public static String[] nuts1Columns() {
-            return new String[]{"codigo", "nuts1"};
+            return new String[]{"codigo", "nuts1", "n_municipios", "n_freguesias"};
         }
 
         public static String[] nuts2Columns() {
-            return new String[]{"codigo", "nuts2", "nuts1"};
+            return new String[]{"codigo", "nuts2", "nuts1", "n_municipios", "n_freguesias"};
         }
 
         public static String[] nuts3Columns() {
-            return new String[]{"codigo", "nuts3", "nuts2"};
+            return new String[]{"codigo", "nuts3", "nuts2", "n_municipios", "n_freguesias"};
         }
 
         public static GeoUnit mapRowDistrict(ResultSet rs, String prefix) throws SQLException {
@@ -90,6 +95,8 @@ public final class RowMappers {
                     ? GeoUnitType.ISLAND : GeoUnitType.DISTRICT);
             u.setCode(rs.getString("dt"));
             u.setName(rs.getString("distrito"));
+            u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
+            u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
         }
@@ -102,6 +109,7 @@ public final class RowMappers {
             u.setName(rs.getString("municipio"));
             u.setParent(districtByName.get(rs.getString("distrito_ilha")));
             u.setNuts3Code(rs.getString("nuts3_cod"));
+            u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
         }
@@ -124,6 +132,8 @@ public final class RowMappers {
             u.setType(GeoUnitType.NUTS1);
             u.setCode(rs.getString("codigo"));
             u.setName(rs.getString("nuts1"));
+            u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
+            u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
         }
@@ -135,6 +145,8 @@ public final class RowMappers {
             u.setCode(rs.getString("codigo"));
             u.setName(rs.getString("nuts2"));
             u.setParent(nuts1ByName.get(rs.getString("nuts1")));
+            u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
+            u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
         }
@@ -146,6 +158,8 @@ public final class RowMappers {
             u.setCode(rs.getString("codigo"));
             u.setName(rs.getString("nuts3"));
             u.setParent(nuts2ByName.get(rs.getString("nuts2")));
+            u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
+            u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
         }

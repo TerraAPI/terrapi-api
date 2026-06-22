@@ -22,5 +22,14 @@ public record GeoUnitDetailsDto(
         @Schema(description = "Area in hectares")
         Double areaHa,
         @Schema(description = "Perimeter in kilometers")
-        Double perimeterKm
+        Double perimeterKm,
+
+        @Schema(description = "Number of child municipalities (null for leaf types)")
+        Integer municipalityCount,
+        @Schema(description = "Number of child parishes (null for parishes)")
+        Integer parishCount,
+        @Schema(description = "Longitude of the interior representative point")
+        Double lon,
+        @Schema(description = "Latitude of the interior representative point")
+        Double lat
 ) {}

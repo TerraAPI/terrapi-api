@@ -59,6 +59,7 @@ public class CaopImportService {
         }
         log.info("Import finished — {}", total.counts());
 
+        updateRepresentativePoints();
         triggerGeneration();
         return total;
     }
@@ -68,8 +69,16 @@ public class CaopImportService {
         ImportResult result = doImport(filePath);
         log.info("Import finished — {}", result.counts());
 
+        updateRepresentativePoints();
         triggerGeneration();
         return result;
+    }
+
+    private void updateRepresentativePoints() {
+        int updated = jdbcTemplate.update(
+                "UPDATE geo_units SET representative_point = ST_PointOnSurface(geometry) "
+                        + "WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)");
+        log.info("  Representative points computed for {} units", updated);
     }
 
     private void triggerGeneration() {
@@ -151,9 +160,10 @@ public class CaopImportService {
         if (batch.isEmpty()) return;
         jdbcTemplate.batchUpdate("""
                 INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
-                                       type, parent_code, simplified_name, nuts3_code)
+                                       type, parent_code, simplified_name, nuts3_code,
+                                       municipality_count, parish_count)
                 VALUES (?, ?, ST_Transform(ST_GeomFromWKB(?, ?), 4326),
-                        ?, ?, ?, ?, ?, ?)
+                        ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (code) DO UPDATE SET
                     name = EXCLUDED.name,
                     geometry = EXCLUDED.geometry,
@@ -162,7 +172,9 @@ public class CaopImportService {
                     type = EXCLUDED.type,
                     parent_code = EXCLUDED.parent_code,
                     simplified_name = EXCLUDED.simplified_name,
-                    nuts3_code = EXCLUDED.nuts3_code
+                    nuts3_code = EXCLUDED.nuts3_code,
+                    municipality_count = EXCLUDED.municipality_count,
+                    parish_count = EXCLUDED.parish_count
                 """, batch, 50, (ps, u) -> {
             ps.setString(1, u.getCode());
             ps.setString(2, u.getName());
@@ -179,6 +191,8 @@ public class CaopImportService {
             ps.setString(8, u.getParent() != null ? u.getParent().getCode() : null);
             ps.setString(9, u.getSimplifiedName());
             ps.setString(10, u.getNuts3Code());
+            ps.setObject(11, u.getMunicipalityCount());
+            ps.setObject(12, u.getParishCount());
         });
     }
 

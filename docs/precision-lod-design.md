@@ -11,10 +11,11 @@ Each `GeoUnitType` is stored in `geo_unit_precisions` at four levels of detail:
 - **LOD 1–2** — progressively simplified.
 - **LOD 3** — *coarsest*, the lightest payload (used as the grid's default).
 
-Tolerances are per type and configured under `terrapi.precision.lod` in `application.yaml`. They
-were chosen from the measured CAOP geometry scale (native vertex spacing ≈ 18–37 m on the
-mainland, ≈ 3–15 m on the islands, plus the smallest-feature sizes), so LOD 0 reduces vertex
-count meaningfully without distorting even the smallest parishes/islands.
+Tolerances are a **single ladder** configured under `terrapi.precision.lod` in `application.yaml`
+(one tolerance per LOD, driven by the parish base). They were chosen from the measured CAOP
+geometry scale (native vertex spacing ≈ 18–37 m on the mainland, ≈ 3–15 m on the islands, plus the
+smallest-feature sizes), so LOD 0 reduces vertex count meaningfully without distorting even the
+smallest parishes/islands.
 
 > LOD 0 must **never** be configured with tolerance `0`: `ST_SimplifyPreserveTopology(geom, 0)`
 > returns the original unchanged, re-creating an exact duplicate and the large payload it exists
@@ -42,22 +43,43 @@ Generation therefore uses PostGIS `ST_CoverageSimplify`, a window function that 
 ST_CoverageSimplify(geom_3763, tolerance, <simplifyBoundary>) OVER (PARTITION BY lod)
 ```
 
-Partitioning by `lod` makes each `(type, lod)` a single coverage and keeps the tolerance constant within a partition (required by `ST_CoverageSimplify`). Generation already runs per `GeoUnitType`, so each layer is simplified as its own coverage and layers never mix.
+Partitioning by `lod` keeps the tolerance constant within a partition (required by
+`ST_CoverageSimplify`). This is applied to the **finest** layer (parishes); coarser layers are
+not simplified independently but **derived** from it (see *Hierarchical nesting* below).
 
-### Validity preflight and fallback
+### Authoritative coverage, no fallback
 
-`ST_CoverageSimplify` requires a valid coverage as input. Before simplifying a type, the coverage is checked with `ST_CoverageInvalidEdges(geom, coverage-snap-tolerance) OVER ()`. If any invalid edges are found (common with raw CAOP micro-slivers), generation falls back to the per-feature `ST_SimplifyPreserveTopology` path for that type and the whole run is marked **DEGRADED** (non-blocking, but visible).
+`ST_CoverageSimplify`/`ST_CoverageUnion` require a valid coverage. The CAOP dataset is an
+authoritative, fixed-format single source of truth and is a valid coverage. There is **no**
+fallback to independent per-type simplification: if the coverage is ever invalid (e.g. the format
+changes), generation fails loudly (`FAILED`) and the transaction rolls back, preserving the
+previous precisions — rather than silently producing a lower-quality, non-nested result.
 
 ### Configuration (`terrapi.precision`)
 
-- `topology-preserving` — master toggle (default `true`); `false` always uses per-feature simplification.
-- `topology-preserving-by-type` — optional per-`GeoUnitType` override map.
-- `simplify-boundary` — passed to `ST_CoverageSimplify` (default `false`, keeps the outer coverage boundary).
-- `coverage-snap-tolerance` — tolerance for the `ST_CoverageInvalidEdges` validity check (default `0.0`, exact).
+- `lod` — the single LOD ladder (one `{lod, tolerance}` per level).
+- `simplify-boundary` — passed to `ST_CoverageSimplify` (default `false`, keeps the outer coverage boundary crisp).
+- `validation` — `max-null-pct` / `max-invalid-pct` / `max-empty-pct` thresholds; a run is healthy when it produced rows and stays within them.
 
-### Scope
+### Hierarchical nesting (unified precision)
 
-This preserves topology **within** each layer only. Cross-layer hierarchical nesting (a parish edge coinciding with its parent municipality edge) is out of scope.
+Layers are **nested**: the whole hierarchy is derived from one simplified parish coverage per LOD,
+so every level shares the same edge graph (a parish edge coincides exactly with its municipality,
+district and NUTS edges). Per LOD level (tolerance `T` from the PARISH ladder):
+
+1. **Parishes** — coverage-simplify the parish coverage at `T`.
+2. **Municipalities** — `ST_CoverageUnion` of the simplified parishes, grouped by `parent_code`.
+3. **Districts/Islands** — dissolve the simplified municipalities (target type from the parent unit).
+4. **NUTS3 ← municipalities** (grouped by `nuts3_code`), **NUTS2 ← NUTS3**, **NUTS1 ← NUTS2**.
+
+Because each level reuses the already-simplified child edges, boundaries are inherited, not
+re-simplified — so parishes ⊂ municipalities ⊂ districts, and NUTS borders follow municipality
+borders. The tradeoff (accepted): coarse layers inherit parish-edge density and are heavier than an
+independent simplification would be; per-type tolerances are therefore retired.
+
+Because the levels are coupled, generation rebuilds the **whole hierarchy**: `generate(type, lod)`
+ignores `type` (always all layers); `lod` scopes to one level across all types (delete every row at
+that LOD, rebuild the hierarchy for it).
 
 ## Consumption: whole-layer selection grid
 
@@ -87,31 +109,21 @@ far fewer per parent) a single cached, simplified layer payload covers the selec
 choropleth and export use cases without the per-tile complexity. The
 `geo_unit_precisions` / LOD / coverage pipeline is retained as the grid's data source.
 
-## Layers vs borders, and why layers are not nested
+## Layers vs borders
 
-There are two geometry-serving surfaces, kept deliberately separate:
+Two geometry-serving surfaces, fed from one nested topology:
 
-- **`/api/v1/layers/{type}`** — independently coverage-simplified polygon *fills*, with
-  per-type tolerances (parishes finer than districts). Used for selection and choropleth.
+- **`/api/v1/layers/{type}`** — polygon *fills* per `GeoUnitType`, derived by hierarchical
+  dissolution (see *Hierarchical nesting*). Used for selection and choropleth.
 - **`/api/v1/borders`** — the classified boundary-*line* network (CAOP `trocos`): each shared
   edge carries `level` (1 national … 5 parish), `lineType` (LAND/COAST/WATER) and `lengthKm`,
   and is drawn once. Used for boundary overlays / styling.
 
-### Why simplification is intra-layer only (Level 1)
+Because layers are nested, a coarser layer's outline **is** the union of its children's edges, so
+fills across levels align exactly and a fill outline coincides with the corresponding border line.
 
-Each `GeoUnitType` is simplified as its own coverage, independently of the others. We do **not**
-nest layers (i.e. build coarser layers by dissolving finer ones). Full cross-layer nesting would
-make all levels share an identical edge graph — layers and borders would then be two views of one
-topology — but it **conflicts with per-layer LOD optimization**: a district boundary forced to
-equal the union of its parishes' edges can't be simplified below parish-edge density, so coarse
-layers would become much heavier. That would undo the per-type tolerance savings (districts are
-cheap precisely because they don't need parish precision).
-
-**Accepted consequence:** because fills and borders are simplified independently, a layer fill's
-outline and a border line are not pixel-coincident at high zoom. In practice borders are rendered
-*on top of* fills (or a basemap), so the border line is the authoritative visible edge; render
-fills without strokes if exact alignment is required.
-
-Note: even with full nesting, `/borders` would still be needed for its edge-level semantics
-(`level`, and especially the coastline/water `lineType`, which is **not** derivable from admin
-polygons) and as a single-stroke rendering primitive.
+`/borders` is still a distinct surface — not for its geometry (which the layers now share) but for
+its **edge-level semantics**: the border `level` (for thick-national / thin-parish styling) and
+especially the coastline/water `lineType`, which is **not** derivable from admin polygons. It is
+also the better rendering primitive — each shared edge is stroked once instead of double-drawn by
+polygon outlines.

@@ -13,7 +13,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.ValidationResult;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
@@ -23,10 +22,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,10 +50,17 @@ class PrecisionWriterTest {
         validation.setMaxEmptyPct(25.0);
         when(properties.getValidation()).thenReturn(validation);
 
+        // update arities: delete-all (0), delete-lod (1 int),
+        // dissolve (2 uuid), parish insert (int, int, uuid).
+        when(jdbcTemplate.update(anyString())).thenReturn(0);
         when(jdbcTemplate.update(anyString(), anyInt())).thenReturn(0);
-        when(jdbcTemplate.update(anyString(), anyInt(), anyInt())).thenReturn(0);
-        when(jdbcTemplate.update(anyString(), anyInt(), anyInt(), any(UUID.class))).thenReturn(10);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyInt())).thenReturn(5L);
+        when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class))).thenReturn(1);
+        when(jdbcTemplate.update(anyString(), anyInt(), anyInt(), any(UUID.class))).thenReturn(5);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(100L);
+    }
+
+    private void stubLadder(LodLevel... levels) {
+        when(policyService.getLodLadder()).thenReturn(List.of(levels));
     }
 
     private void stubValidation(int total, int nulls, int invalid, int empty) {
@@ -62,99 +68,46 @@ class PrecisionWriterTest {
                 .thenReturn(new ValidationResult(total, nulls, invalid, empty));
     }
 
-    private void stubCoverageValidity(int invalidEdges) {
-        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), anyDouble(), anyInt()))
-                .thenReturn(invalidEdges);
+    @Test
+    void write_buildsNestedHierarchy() {
+        stubLadder(new LodLevel(0, 25.0));
+        stubValidation(100, 0, 0, 0);
+
+        WriteResult result = writer.write(UUID.randomUUID(), null);
+
+        assertThat(result.rowCount()).isEqualTo(100);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), any(UUID.class), any(UUID.class));
+        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("ST_CoverageUnion"));
     }
 
     @Test
-    void write_healthy_perFeature_returnsResult() {
-        when(policyService.getLodLevels(GeoUnitType.DISTRICT))
-                .thenReturn(List.of(new LodLevel(1, 100.0), new LodLevel(2, 200.0)));
-        when(policyService.isTopologyPreserving(GeoUnitType.DISTRICT)).thenReturn(false);
-        stubValidation(10, 0, 0, 0);
+    void write_unhealthy_throws() {
+        stubLadder(new LodLevel(0, 25.0));
+        stubValidation(100, 0, 60, 0);
 
-        WriteResult result = writer.write(UUID.randomUUID(), List.of(GeoUnitType.DISTRICT), null);
-
-        assertThat(result.rowCount()).isEqualTo(10);
-        assertThat(result.totalUnits()).isEqualTo(5);
-        assertThat(result.totalLods()).isEqualTo(2);
-        assertThat(result.degraded()).isFalse();
-
-        ArgumentCaptor<String> deleteSql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).update(deleteSql.capture(), anyInt());
-        assertThat(deleteSql.getValue()).contains("DELETE FROM geo_unit_precisions").doesNotContain("lod");
-    }
-
-    @Test
-    void write_unhealthy_throwsAndRollsBack() {
-        when(policyService.getLodLevels(GeoUnitType.MUNICIPALITY))
-                .thenReturn(List.of(new LodLevel(1, 100.0)));
-        when(policyService.isTopologyPreserving(GeoUnitType.MUNICIPALITY)).thenReturn(false);
-        stubValidation(10, 0, 5, 0);
-
-        assertThatThrownBy(() ->
-                writer.write(UUID.randomUUID(), List.of(GeoUnitType.MUNICIPALITY), null))
+        assertThatThrownBy(() -> writer.write(UUID.randomUUID(), null))
                 .isInstanceOf(PrecisionWriter.GenerationFailedException.class);
     }
 
     @Test
-    void write_withLod_filtersLevelsAndScopesDelete() {
-        when(policyService.getLodLevels(GeoUnitType.PARISH))
-                .thenReturn(List.of(new LodLevel(0, 25.0), new LodLevel(1, 50.0), new LodLevel(2, 200.0)));
-        when(policyService.isTopologyPreserving(GeoUnitType.PARISH)).thenReturn(false);
-        stubValidation(5, 0, 0, 0);
+    void write_withLod_deletesOnlyThatLod() {
+        stubLadder(new LodLevel(0, 25.0), new LodLevel(2, 200.0));
+        stubValidation(50, 0, 0, 0);
 
-        WriteResult result = writer.write(UUID.randomUUID(), List.of(GeoUnitType.PARISH), 1);
+        writer.write(UUID.randomUUID(), 2);
 
-        assertThat(result.totalLods()).isEqualTo(1);
-
-        ArgumentCaptor<String> deleteSql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).update(deleteSql.capture(), anyInt(), anyInt());
-        assertThat(deleteSql.getValue()).contains("AND lod = ?");
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), anyInt());
+        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("WHERE lod = ?"));
     }
 
     @Test
-    void write_validCoverage_usesCoverageExpression() {
-        when(policyService.getLodLevels(GeoUnitType.DISTRICT))
-                .thenReturn(List.of(new LodLevel(1, 100.0)));
-        when(policyService.isTopologyPreserving(GeoUnitType.DISTRICT)).thenReturn(true);
-        when(policyService.isSimplifyBoundary()).thenReturn(false);
-        stubCoverageValidity(0);
-        stubValidation(5, 0, 0, 0);
+    void write_emptyLadder_returnsEmpty() {
+        when(policyService.getLodLadder()).thenReturn(List.of());
 
-        WriteResult result = writer.write(UUID.randomUUID(), List.of(GeoUnitType.DISTRICT), null);
-
-        assertThat(result.degraded()).isFalse();
-
-        ArgumentCaptor<String> insertSql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).update(insertSql.capture(), anyInt(), anyInt(), any(UUID.class));
-        assertThat(insertSql.getValue()).contains("ST_CoverageSimplify");
-    }
-
-    @Test
-    void write_invalidCoverage_fallsBackToPerFeatureAndDegraded() {
-        when(policyService.getLodLevels(GeoUnitType.PARISH))
-                .thenReturn(List.of(new LodLevel(1, 50.0)));
-        when(policyService.isTopologyPreserving(GeoUnitType.PARISH)).thenReturn(true);
-        stubCoverageValidity(7);
-        stubValidation(5, 0, 0, 0);
-
-        WriteResult result = writer.write(UUID.randomUUID(), List.of(GeoUnitType.PARISH), null);
-
-        assertThat(result.degraded()).isTrue();
-
-        ArgumentCaptor<String> insertSql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate).update(insertSql.capture(), anyInt(), anyInt(), any(UUID.class));
-        assertThat(insertSql.getValue()).contains("ST_SimplifyPreserveTopology");
-    }
-
-    @Test
-    void write_noLevels_skipsTypeAndIsHealthy() {
-        when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of());
-        stubValidation(0, 0, 0, 0);
-
-        WriteResult result = writer.write(UUID.randomUUID(), List.of(GeoUnitType.DISTRICT), null);
+        WriteResult result = writer.write(UUID.randomUUID(), null);
 
         assertThat(result.rowCount()).isZero();
         assertThat(result.totalLods()).isZero();

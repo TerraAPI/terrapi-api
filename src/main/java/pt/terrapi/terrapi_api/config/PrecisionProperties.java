@@ -6,7 +6,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -14,13 +13,11 @@ import java.util.Map;
 @ConfigurationProperties("terrapi.precision")
 public class PrecisionProperties {
 
-    private Map<String, List<LodLevel>> lod;
+    /** The single LOD ladder (one tolerance per level) driving the nested hierarchy. */
+    private List<LodLevel> lod;
     private Validation validation = new Validation();
 
-    private boolean topologyPreserving = true;
     private boolean simplifyBoundary = false;
-    private double coverageSnapTolerance = 0.0;
-    private Map<String, Boolean> topologyPreservingByType;
 
     @Getter
     @Setter

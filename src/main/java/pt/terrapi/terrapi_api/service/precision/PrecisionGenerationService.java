@@ -6,18 +6,16 @@ import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GenerationType;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 /**
- * Orchestrates precision generation: resolves the target types, delegates the atomic
- * delete+insert+validate to {@link PrecisionWriter} (which rolls back on failure), and records
- * the run in {@code precision_generations} regardless of outcome.
+ * Orchestrates precision generation: delegates the atomic delete+insert+validate of the whole
+ * nested hierarchy to {@link PrecisionWriter} (which rolls back on failure) and records the run in
+ * {@code precision_generations} regardless of outcome.
  */
 @Slf4j
 @Service
@@ -39,17 +37,15 @@ public class PrecisionGenerationService {
     public GenerationResult generate(GenerationType generationType, Integer lod) {
         long t0 = System.currentTimeMillis();
         UUID generationId = UUID.randomUUID();
-        List<GeoUnitType> types = resolveTypes(generationType);
 
-        log.info("Generating precision (type={}, lod={}, genId={})", generationType, lod, generationId);
+        log.info("Generating precision (lod={}, genId={})", lod, generationId);
 
         try {
-            WriteResult result = writer.write(generationId, types, lod);
-            GenerationStatus status = result.degraded() ? GenerationStatus.DEGRADED : GenerationStatus.SUCCESS;
-            saveAudit(generationId, generationType, status, result);
-            log.info("Generation {} {} — {} rows in {} ms",
-                    generationId, status, result.rowCount(), System.currentTimeMillis() - t0);
-            return new GenerationResult(generationId, status, result.rowCount());
+            WriteResult result = writer.write(generationId, lod);
+            saveAudit(generationId, generationType, GenerationStatus.SUCCESS, result);
+            log.info("Generation {} SUCCESS — {} rows in {} ms",
+                    generationId, result.rowCount(), System.currentTimeMillis() - t0);
+            return new GenerationResult(generationId, GenerationStatus.SUCCESS, result.rowCount());
         } catch (Exception e) {
             log.error("Generation {} FAILED (rolled back)", generationId, e);
             saveAudit(generationId, generationType, GenerationStatus.FAILED, WriteResult.empty());
@@ -67,12 +63,5 @@ public class PrecisionGenerationService {
         gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                 result.totalUnits(), result.totalLods());
         generationRepository.save(gen);
-    }
-
-    private static List<GeoUnitType> resolveTypes(GenerationType generationType) {
-        if (generationType == GenerationType.ALL) {
-            return List.of(GeoUnitType.values());
-        }
-        return List.of(GeoUnitType.valueOf(generationType.name()));
     }
 }

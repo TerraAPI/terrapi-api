@@ -40,7 +40,7 @@ public class GeoUnitPrecision {
     @Column(nullable = false)
     private int lod;
 
-    @Column(columnDefinition = "geometry(Geometry, 4326)", nullable = false)
+    @Column(columnDefinition = "geometry(Geometry, 3857)", nullable = false)
     private Geometry geometry;
 
     @Column(name = "tolerance_m")

@@ -16,6 +16,7 @@ import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,15 +24,21 @@ import java.util.stream.Collectors;
 @Service
 public class PrecisionGenerationService {
 
-    private static final String INSERT_LODS_SQL = """
+    private static final String INSERT_LODS_PERFEATURE_SQL = """
             WITH lods(lod, tolerance) AS (
                 VALUES %s
             ),
             base AS (
                 SELECT u.code,
-                       ST_Transform(u.geometry, 3763) AS geom_3763
+                       ST_Transform(
+                           CASE WHEN ST_SRID(u.geometry) = 0
+                                THEN ST_SetSRID(u.geometry, 4326)
+                                ELSE u.geometry END,
+                           3763) AS geom_3763
                 FROM geo_units u
                 WHERE u.type = ?
+                  AND u.geometry IS NOT NULL
+                  AND NOT ST_IsEmpty(u.geometry)
             ),
             simplified AS (
                 SELECT b.code, l.lod, l.tolerance,
@@ -42,9 +49,58 @@ public class PrecisionGenerationService {
             INSERT INTO geo_unit_precisions
                 (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
                  generation_id, created_at, status)
-            SELECT code, ?, lod, ST_Transform(simplified_3763, 4326), tolerance,
+            SELECT code, ?, lod, ST_Transform(simplified_3763, 3857), tolerance,
                    ST_NPoints(simplified_3763), ?, NOW(), 'ACTIVE'
             FROM simplified
+            """;
+
+    private static final String INSERT_LODS_COVERAGE_SQL = """
+            WITH lods(lod, tolerance) AS (
+                VALUES %s
+            ),
+            base AS (
+                SELECT u.code,
+                       ST_Transform(
+                           CASE WHEN ST_SRID(u.geometry) = 0
+                                THEN ST_SetSRID(u.geometry, 4326)
+                                ELSE u.geometry END,
+                           3763) AS geom_3763
+                FROM geo_units u
+                WHERE u.type = ?
+                  AND u.geometry IS NOT NULL
+                  AND NOT ST_IsEmpty(u.geometry)
+            ),
+            simplified AS (
+                SELECT b.code, l.lod, l.tolerance,
+                       ST_SetSRID(
+                           ST_CoverageSimplify(b.geom_3763, l.tolerance, %s)
+                               OVER (PARTITION BY l.lod),
+                           3763) AS simplified_3763
+                FROM base b
+                CROSS JOIN lods l
+            )
+            INSERT INTO geo_unit_precisions
+                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
+                 generation_id, created_at, status)
+            SELECT code, ?, lod, ST_Transform(simplified_3763, 3857), tolerance,
+                   ST_NPoints(simplified_3763), ?, NOW(), 'ACTIVE'
+            FROM simplified
+            """;
+
+    private static final String COVERAGE_VALIDITY_SQL = """
+            SELECT COALESCE(COUNT(*) FILTER (WHERE inv IS NOT NULL), 0)
+            FROM (
+                SELECT ST_CoverageInvalidEdges(
+                           ST_Transform(
+                               CASE WHEN ST_SRID(geometry) = 0
+                                    THEN ST_SetSRID(geometry, 4326)
+                                    ELSE geometry END,
+                               3763), ?) OVER () AS inv
+                FROM geo_units
+                WHERE type = ?
+                  AND geometry IS NOT NULL
+                  AND NOT ST_IsEmpty(geometry)
+            ) s
             """;
 
     private static final String VALIDATE_SQL = """
@@ -115,7 +171,8 @@ public class PrecisionGenerationService {
             if (levels.isEmpty()) continue;
             totalLodDefs += levels.size();
             Long unitCount = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM geo_units WHERE type = ?",
+                    "SELECT COUNT(*) FROM geo_units WHERE type = ? "
+                            + "AND geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)",
                     Long.class, type.getValue());
             long count = unitCount != null ? unitCount : 0;
             expectedRowCount += count * levels.size();
@@ -127,13 +184,21 @@ public class PrecisionGenerationService {
 
         log.info("  Computing LODs...");
         int totalRows = 0;
+        boolean degraded = false;
         for (GeoUnitType type : targetTypes) {
             List<LodLevel> levels = policyService.getLodLevels(type);
             if (levels.isEmpty()) continue;
             long tType = System.currentTimeMillis();
-            int rows = insertLods(type, levels, generationId);
+            boolean wantCoverage = policyService.isTopologyPreserving(type);
+            boolean useCoverage = wantCoverage && isValidCoverage(type);
+            if (wantCoverage && !useCoverage) {
+                degraded = true;
+                log.warn("    {}: not a valid coverage — falling back to per-feature simplification", type);
+            }
+            int rows = insertLods(type, levels, generationId, useCoverage);
             totalRows += rows;
-            log.info("    {}: {} rows ({} ms)", type, rows, System.currentTimeMillis() - tType);
+            log.info("    {}: {} rows ({}, {} ms)", type, rows,
+                    useCoverage ? "coverage" : "per-feature", System.currentTimeMillis() - tType);
         }
 
         ValidationResult validation = validateGeneration(generationId);
@@ -159,24 +224,34 @@ public class PrecisionGenerationService {
             return new GenerationResult(generationId, GenerationStatus.FAILED, validation.totalRows);
         }
 
-        gen.setStatus(GenerationStatus.SUCCESS);
+        GenerationStatus finalStatus = degraded ? GenerationStatus.DEGRADED : GenerationStatus.SUCCESS;
+        gen.setStatus(finalStatus);
         gen.updateCounters(validation.totalRows, validation.nullCount, validation.invalidCount,
                 totalUnits, totalLodDefs);
         generationRepository.save(gen);
 
-        log.info("Generation {} SUCCESS — {} rows in {} ms",
-                generationId, validation.totalRows, System.currentTimeMillis() - t0);
+        log.info("Generation {} {} — {} rows in {} ms",
+                generationId, finalStatus, validation.totalRows, System.currentTimeMillis() - t0);
 
-        return new GenerationResult(generationId, GenerationStatus.SUCCESS, validation.totalRows);
+        return new GenerationResult(generationId, finalStatus, validation.totalRows);
     }
 
-    private int insertLods(GeoUnitType type, List<LodLevel> levels, UUID generationId) {
+    private int insertLods(GeoUnitType type, List<LodLevel> levels, UUID generationId, boolean coverage) {
         if (levels.isEmpty()) return 0;
         String valuesClause = levels.stream()
-                .map(l -> String.format("(%d, %.1f)", l.lod(), l.tolerance()))
+                .map(l -> String.format(Locale.US, "(%d, %.1f)", l.lod(), l.tolerance()))
                 .collect(Collectors.joining(", "));
-        String sql = String.format(INSERT_LODS_SQL, valuesClause);
+        String sql = coverage
+                ? String.format(INSERT_LODS_COVERAGE_SQL, valuesClause,
+                        policyService.isSimplifyBoundary() ? "true" : "false")
+                : String.format(INSERT_LODS_PERFEATURE_SQL, valuesClause);
         return jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
+    }
+
+    private boolean isValidCoverage(GeoUnitType type) {
+        Integer invalidEdges = jdbcTemplate.queryForObject(COVERAGE_VALIDITY_SQL, Integer.class,
+                policyService.getCoverageSnapTolerance(), type.getValue());
+        return invalidEdges == null || invalidEdges == 0;
     }
 
     private ValidationResult validateGeneration(UUID generationId) {

@@ -3,6 +3,7 @@ package pt.terrapi.terrapi_api.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -71,6 +72,11 @@ class PrecisionGenerationServiceTest {
         when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any()))
                 .thenReturn(new PrecisionGenerationService.ValidationResult(
                         totalRows, nullCount, invalidCount, emptyCount));
+    }
+
+    private void stubCoverageValidity(int invalidEdges) {
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), any(), any()))
+                .thenReturn(invalidEdges);
     }
 
     @Test
@@ -227,5 +233,73 @@ class PrecisionGenerationServiceTest {
 
         assertThat(result.generationId()).isNotNull();
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
+    }
+
+    @Test
+    void generate_validCoverage_usesCoveragePath_success() {
+        LodLevel lod = new LodLevel(1, 100.0);
+        when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
+        when(policyService.isTopologyPreserving(GeoUnitType.DISTRICT)).thenReturn(true);
+        stubCoverageValidity(0);
+        stubCount(GeoUnitType.DISTRICT, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 0);
+
+        GenerationResult result = service.generate(GenerationType.DISTRICT);
+
+        assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
+        assertThat(result.rowCount()).isEqualTo(5);
+    }
+
+    @Test
+    void generate_invalidCoverage_fallsBackToDegraded() {
+        LodLevel lod = new LodLevel(1, 100.0);
+        when(policyService.getLodLevels(GeoUnitType.PARISH)).thenReturn(List.of(lod));
+        when(policyService.isTopologyPreserving(GeoUnitType.PARISH)).thenReturn(true);
+        stubCoverageValidity(7);
+        stubCount(GeoUnitType.PARISH, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 0);
+
+        GenerationResult result = service.generate(GenerationType.PARISH);
+
+        assertThat(result.status()).isEqualTo(GenerationStatus.DEGRADED);
+        assertThat(result.rowCount()).isEqualTo(5);
+    }
+
+    @Test
+    void generate_insertSql_isSridAndEmptySafe() {
+        LodLevel lod = new LodLevel(1, 100.0);
+        when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
+        stubCount(GeoUnitType.DISTRICT, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 0);
+
+        service.generate(GenerationType.DISTRICT);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), any(), any(), any());
+        assertThat(sqlCaptor.getValue())
+                .contains("ST_SetSRID")
+                .contains("NOT ST_IsEmpty");
+    }
+
+    @Test
+    void generate_coverageSql_reStampsSridOnSimplifiedOutput() {
+        LodLevel lod = new LodLevel(1, 100.0);
+        when(policyService.getLodLevels(GeoUnitType.DISTRICT)).thenReturn(List.of(lod));
+        when(policyService.isTopologyPreserving(GeoUnitType.DISTRICT)).thenReturn(true);
+        stubCoverageValidity(0);
+        stubCount(GeoUnitType.DISTRICT, 5);
+        stubInsertLods(5);
+        stubValidation(5, 0, 0, 0);
+
+        service.generate(GenerationType.DISTRICT);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), any(), any(), any());
+        String sql = sqlCaptor.getValue();
+        assertThat(sql).contains("ST_CoverageSimplify");
+        assertThat(sql).containsPattern("(?s)ST_SetSRID\\(\\s*ST_CoverageSimplify");
     }
 }

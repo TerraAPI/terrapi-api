@@ -192,6 +192,14 @@ public class CaopImportService {
                     "Geometry SRID mismatch: " + wrongSrid + " rows not in 4326. CRS transform may have failed.");
         }
 
+        Long missingGeometry = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM geo_units WHERE geometry IS NULL OR ST_IsEmpty(geometry)",
+                Long.class);
+        if (missingGeometry != null && missingGeometry > 0) {
+            log.warn("{} units have null/empty geometry — they will be skipped by precision generation",
+                    missingGeometry);
+        }
+
         var outOfBounds = jdbcTemplate.queryForList("""
                 SELECT code, ST_X(ST_Centroid(geometry)) AS lon,
                        ST_Y(ST_Centroid(geometry)) AS lat

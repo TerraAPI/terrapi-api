@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgis/postgis:18-3.6-alpine
+    build: .
+    image: terrapi-postgis-pgrouting:18-3.6
     container_name: terrapi-db
     command:
       - postgres

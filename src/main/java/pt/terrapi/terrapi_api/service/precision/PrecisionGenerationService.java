@@ -1,5 +1,6 @@
 package pt.terrapi.terrapi_api.service.precision;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
@@ -17,19 +18,14 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PrecisionGenerationService {
 
     private final PrecisionWriter writer;
     private final PrecisionGenerationRepository generationRepository;
 
-    public PrecisionGenerationService(PrecisionWriter writer,
-                                      PrecisionGenerationRepository generationRepository) {
-        this.writer = writer;
-        this.generationRepository = generationRepository;
-    }
-
     public GenerationResult generate() {
-        return generate((Integer) null);
+        return generate(null);
     }
 
     public GenerationResult generate(Integer lod) {

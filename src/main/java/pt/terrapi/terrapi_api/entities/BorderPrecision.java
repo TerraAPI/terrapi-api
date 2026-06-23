@@ -6,11 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.locationtech.jts.geom.Geometry;
 
 import java.time.Instant;
@@ -27,7 +27,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @Entity
 @Table(name = "border_segment_precisions", indexes = {
-        @Index(name = "idx_bsp_level_lod", columnList = "level, lod"),
         @Index(name = "idx_bsp_generation_id", columnList = "generation_id")
 })
 public class BorderPrecision {
@@ -65,13 +64,7 @@ public class BorderPrecision {
     @Column(name = "generation_id")
     private UUID generationId;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
-
-    @PrePersist
-    void setDefaults() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-    }
 }

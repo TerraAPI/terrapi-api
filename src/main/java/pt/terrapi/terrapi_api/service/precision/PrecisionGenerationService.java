@@ -8,7 +8,6 @@ import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
-import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -55,7 +54,6 @@ public class PrecisionGenerationService {
     private void saveAudit(UUID generationId, GenerationStatus status, WriteResult result) {
         PrecisionGeneration gen = new PrecisionGeneration();
         gen.setGenerationId(generationId);
-        gen.setCreatedAt(Instant.now());
         gen.setStatus(status);
         gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                 result.totalUnits(), result.totalLods());

@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 
 import java.time.Instant;
@@ -26,7 +27,8 @@ public class PrecisionGeneration {
     @Column(name = "generation_id")
     private UUID generationId;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
     @Column(nullable = false, length = 20)
@@ -50,9 +52,6 @@ public class PrecisionGeneration {
 
     @PrePersist
     void setDefaults() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
         if (generationId == null) {
             generationId = UUID.randomUUID();
         }

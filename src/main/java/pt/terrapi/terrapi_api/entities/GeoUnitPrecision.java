@@ -6,11 +6,11 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import org.locationtech.jts.geom.Geometry;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
@@ -52,13 +52,7 @@ public class GeoUnitPrecision {
     @Column(name = "generation_id")
     private UUID generationId;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
-
-    @PrePersist
-    void setDefaults() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-    }
 }

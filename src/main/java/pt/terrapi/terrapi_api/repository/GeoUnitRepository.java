@@ -117,6 +117,37 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     List<GeoUnitSummaryDto> findSummaryListByNuts3Code(@Param("nuts3Code") String nuts3Code);
 
     @Query(value = """
+            WITH RECURSIVE descendants AS (
+                SELECT code FROM geo_units WHERE parent_code = :code
+                UNION ALL
+                SELECT g.code FROM geo_units g JOIN descendants d ON g.parent_code = d.code
+            )
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu JOIN descendants d ON gu.code = d.code
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findDescendants(@Param("code") String code);
+
+    @Query(value = """
+            WITH RECURSIVE descendants AS (
+                SELECT code FROM geo_units WHERE parent_code = :code
+                UNION ALL
+                SELECT g.code FROM geo_units g JOIN descendants d ON g.parent_code = d.code
+            )
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu JOIN descendants d ON gu.code = d.code
+            WHERE gu.type = :type
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findDescendantsByType(@Param("code") String code, @Param("type") int type);
+
+    @Query(value = """
             SELECT g.code AS code,
                    COALESCE(g.simplified_name, g.name) AS name,
                    g.type AS type,

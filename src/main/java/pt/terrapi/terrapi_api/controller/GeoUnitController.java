@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,15 +23,12 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/geo-units")
 @Tag(name = "Geographic Units", description = "Query geographic units and hierarchy")
 public class GeoUnitController {
 
     private final GeoUnitQueryService geoUnitQueryService;
-
-    public GeoUnitController(GeoUnitQueryService geoUnitQueryService) {
-        this.geoUnitQueryService = geoUnitQueryService;
-    }
 
     @GetMapping
     @Operation(summary = "List geographic units, optionally filtered by type")
@@ -59,6 +58,24 @@ public class GeoUnitController {
             @Parameter(description = "Parent geographic unit code")
             @PathVariable String id) {
         return ResponseEntity.ok(geoUnitQueryService.findChildren(id));
+    }
+
+    @GetMapping("/{id}/parent")
+    @Operation(summary = "Get the immediate parent unit")
+    public ResponseEntity<GeoUnitSummaryDto> findParent(
+            @Parameter(description = "Geographic unit code")
+            @PathVariable String id) {
+        return ResponseEntity.ok(geoUnitQueryService.findParent(id));
+    }
+
+    @GetMapping("/{id}/descendants")
+    @Operation(summary = "List all descendant units (all levels), optionally filtered by type")
+    public ResponseEntity<List<GeoUnitSummaryDto>> findDescendants(
+            @Parameter(description = "Geographic unit code")
+            @PathVariable String id,
+            @Parameter(description = "Filter descendants by type: DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
+            @RequestParam(required = false) GeoUnitType type) {
+        return ResponseEntity.ok(geoUnitQueryService.findDescendants(id, type));
     }
 
     @GetMapping("/{id}/neighbours")

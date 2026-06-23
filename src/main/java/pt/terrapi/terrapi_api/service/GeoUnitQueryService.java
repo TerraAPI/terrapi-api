@@ -83,6 +83,26 @@ public class GeoUnitQueryService {
         return geoUnitRepository.findSummaryListByNuts3Code(nuts3Code);
     }
 
+    public GeoUnitSummaryDto findParent(String code) {
+        GeoUnit unit = geoUnitRepository.findById(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));
+        GeoUnit parent = unit.getParent();
+        if (parent == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit has no parent: " + code);
+        }
+        return GeoUnitMapper.toMinimalDto(parent);
+    }
+
+    public List<GeoUnitSummaryDto> findDescendants(String code, GeoUnitType type) {
+        if (!geoUnitRepository.existsById(code)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
+        }
+        if (type != null) {
+            return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendantsByType(code, type.getValue()));
+        }
+        return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendants(code));
+    }
+
     public ContainsResponse pointInside(String code, double lat, double lon) {
         if (!geoUnitRepository.existsById(code)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);

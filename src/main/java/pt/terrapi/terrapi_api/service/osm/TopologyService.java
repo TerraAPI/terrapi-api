@@ -26,7 +26,7 @@ public class TopologyService {
     private static final String SNAP_TOL = "0.00000001";
 
     private static final String SPEED_KMH = """
-            coalesce(maxspeed_kmh, CASE highway
+            coalesce(NULLIF(maxspeed_kmh, 0), CASE highway
                 WHEN 'motorway' THEN 110 WHEN 'motorway_link' THEN 60
                 WHEN 'trunk' THEN 90 WHEN 'trunk_link' THEN 50
                 WHEN 'primary' THEN 80 WHEN 'primary_link' THEN 45
@@ -138,7 +138,7 @@ public class TopologyService {
                                 WHEN n.oneway IN ('yes','true','1') OR n.junction = 'roundabout' THEN -1
                                 ELSE s.t END
                         FROM (
-                            SELECT id, ST_Length(geom::geography) / (%s / 3.6) AS t
+                            SELECT id, ST_Length(geom::geography) / (GREATEST(%s, 1) / 3.6) AS t
                             FROM car_edges_noded
                         ) s WHERE n.id = s.id;
                         """.formatted(SPEED_KMH)),

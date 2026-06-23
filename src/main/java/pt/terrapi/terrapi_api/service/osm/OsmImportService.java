@@ -23,10 +23,11 @@ import pt.terrapi.terrapi_api.dto.ImportResult;
 
 /**
  * Imports the OSM highway network from an {@code .osm.pbf} file into the {@code routing_edges}
- * PostGIS table by shelling out to osm2pgsql (flex output). This is a rare, admin-only action:
- * it runs synchronously, fails loudly, and is kept gentle on the running server (small node cache
- * + flat-nodes) rather than optimised for speed. The {@code routing_edges} table is owned by
- * osm2pgsql; nothing in the app reads it yet.
+ * PostGIS table by shelling out to osm2pgsql (flex output). This is a rare, admin-only action that
+ * runs synchronously and fails loudly (non-zero exit code or zero rows both raise). Defaults to the
+ * fast non-slim mode (in-RAM middle); set {@code terrapi.osm.slim=true} for memory-constrained hosts.
+ * The {@code routing_edges} table is owned by osm2pgsql. Note: isochrones are served by Valhalla,
+ * which reads the pbf directly — this table is kept only for querying the road network in PostGIS.
  */
 @Slf4j
 @Service
@@ -125,59 +126,59 @@ public class OsmImportService {
         log.info("Running osm2pgsql ({} mode): {}",
                 properties.isSlim() ? "slim" : "non-slim", String.join(" ", cmd));
         try {
-        ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.environment().put("PGUSER", dbUser);
-        pb.environment().put("PGPASSWORD", dbPassword);
-        pb.redirectErrorStream(true);
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            pb.environment().put("PGUSER", dbUser);
+            pb.environment().put("PGPASSWORD", dbPassword);
+            pb.redirectErrorStream(true);
 
-        Process process;
-        try {
-            process = pb.start();
-        } catch (IOException e) {
-            throw new IOException(
-                    "Could not start osm2pgsql ('" + properties.getOsm2pgsqlPath()
-                            + "'). Is it installed and on PATH?", e);
-        }
+            Process process;
+            try {
+                process = pb.start();
+            } catch (IOException e) {
+                throw new IOException(
+                        "Could not start osm2pgsql ('" + properties.getOsm2pgsqlPath()
+                                + "'). Is it installed and on PATH?", e);
+            }
 
-        Deque<String> tail = new ArrayDeque<>();
-        long throttleMs = Math.max(0, properties.getLogProgressSeconds()) * 1000L;
-        long lastProgressLog = 0;
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                log.debug("[osm2pgsql] {}", line);
-                tail.addLast(line);
-                if (tail.size() > ERROR_TAIL_LINES) {
-                    tail.removeFirst();
-                }
-                if (line.isBlank()) {
-                    continue;
-                }
-                if (line.contains("Processing:")) {
-                    long now = System.currentTimeMillis();
-                    if (now - lastProgressLog >= throttleMs) {
-                        log.info("[osm2pgsql] {}", line.trim());
-                        lastProgressLog = now;
+            Deque<String> tail = new ArrayDeque<>();
+            long throttleMs = Math.max(0, properties.getLogProgressSeconds()) * 1000L;
+            long lastProgressLog = 0;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.debug("[osm2pgsql] {}", line);
+                    tail.addLast(line);
+                    if (tail.size() > ERROR_TAIL_LINES) {
+                        tail.removeFirst();
                     }
-                } else {
-                    log.info("[osm2pgsql] {}", line.trim());
+                    if (line.isBlank()) {
+                        continue;
+                    }
+                    if (line.contains("Processing:")) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastProgressLog >= throttleMs) {
+                            log.info("[osm2pgsql] {}", line.trim());
+                            lastProgressLog = now;
+                        }
+                    } else {
+                        log.info("[osm2pgsql] {}", line.trim());
+                    }
                 }
             }
-        }
 
-        int exit;
-        try {
-            exit = process.waitFor();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            process.destroyForcibly();
-            throw new IllegalStateException("osm2pgsql was interrupted", e);
-        }
-        if (exit != 0) {
-            throw new IllegalStateException(
-                    "osm2pgsql exited with code " + exit + ":\n" + String.join("\n", tail));
-        }
+            int exit;
+            try {
+                exit = process.waitFor();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                process.destroyForcibly();
+                throw new IllegalStateException("osm2pgsql was interrupted", e);
+            }
+            if (exit != 0) {
+                throw new IllegalStateException(
+                        "osm2pgsql exited with code " + exit + ":\n" + String.join("\n", tail));
+            }
         } finally {
             deleteQuietly(flatNodes);
         }

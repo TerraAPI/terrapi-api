@@ -26,17 +26,6 @@ tables.routing_edges = osm2pgsql.define_table({
     }
 })
 
--- Ordered node references for each routable way, used to node the network at shared OSM nodes
--- (the true intersections) when building the routing topology. seq is 1-based to match ST_PointN.
-tables.way_nodes = osm2pgsql.define_table({
-    name = 'way_nodes',
-    columns = {
-        { column = 'way_id',  type = 'int8' },
-        { column = 'seq',     type = 'int4' },
-        { column = 'node_id', type = 'int8' },
-    }
-})
-
 local routable = {
     motorway = true, motorway_link = true,
     trunk = true, trunk_link = true,
@@ -100,9 +89,4 @@ function osm2pgsql.process_way(object)
         tunnel        = parse_bool(tags.tunnel),
         geom          = geom,
     })
-
-    local nodes = object.nodes
-    for i = 1, #nodes do
-        tables.way_nodes:insert({ way_id = object.id, seq = i, node_id = nodes[i] })
-    end
 end

@@ -23,6 +23,8 @@ spring:
     import: optional:file:.env[.properties]
 
 terrapi:
+  valhalla:
+    url: ${VALHALLA_URL:http://localhost:8002}
   osm:
     osm2pgsql-path: ${OSM2PGSQL_PATH:osm2pgsql}
     style-resource: osm/routing-edges.lua

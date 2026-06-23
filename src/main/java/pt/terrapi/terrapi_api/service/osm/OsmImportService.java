@@ -36,20 +36,17 @@ public class OsmImportService {
 
     private final JdbcTemplate jdbcTemplate;
     private final OsmProperties properties;
-    private final TopologyService topologyService;
     private final String dbUri;
     private final String dbUser;
     private final String dbPassword;
 
     public OsmImportService(JdbcTemplate jdbcTemplate,
                             OsmProperties properties,
-                            TopologyService topologyService,
                             @Value("${spring.datasource.url}") String datasourceUrl,
                             @Value("${spring.datasource.username}") String dbUser,
                             @Value("${spring.datasource.password}") String dbPassword) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
-        this.topologyService = topologyService;
         this.dbUri = datasourceUrl.replaceFirst("^jdbc:", "");
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
@@ -89,9 +86,6 @@ public class OsmImportService {
             }
             log.info("OSM import finished — {} edges in {} ms",
                     result.total(), System.currentTimeMillis() - t0);
-
-            log.info("Rebuilding car routing topology ...");
-            topologyService.rebuildCar();
             return result;
         } catch (IOException e) {
             throw new RuntimeException("OSM import failed: " + e.getMessage(), e);

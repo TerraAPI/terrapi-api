@@ -97,24 +97,8 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     Page<GeoUnitSummaryDto> findSummaryPageByType(@Param("type") GeoUnitType type, Pageable pageable);
 
     @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " LEFT JOIN gu.parent p WHERE gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByType(@Param("type") GeoUnitType type);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
             + " JOIN gu.parent p WHERE p.code = :parentCode ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByParentCode(@Param("parentCode") String parentCode);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " JOIN gu.parent p WHERE p.code = :parentCode AND gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByParentCodeAndType(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " JOIN gu.parent p WHERE p.parent.code = :grandparentCode AND gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByGrandparentCodeAndType(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " LEFT JOIN gu.parent p WHERE gu.nuts3Code = :nuts3Code ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByNuts3Code(@Param("nuts3Code") String nuts3Code);
 
     @Query(value = """
             WITH RECURSIVE descendants AS (

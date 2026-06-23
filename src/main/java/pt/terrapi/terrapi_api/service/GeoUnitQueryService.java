@@ -58,31 +58,6 @@ public class GeoUnitQueryService {
         return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findNeighbours(code));
     }
 
-    public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
-        return geoUnitRepository.findSummaryListByType(type);
-    }
-
-    public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
-        if (!geoUnitRepository.existsById(parentCode)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + parentCode);
-        }
-        return geoUnitRepository.findSummaryListByParentCodeAndType(parentCode, type);
-    }
-
-    public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
-        if (!geoUnitRepository.existsById(grandparentCode)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + grandparentCode);
-        }
-        return geoUnitRepository.findSummaryListByGrandparentCodeAndType(grandparentCode, type);
-    }
-
-    public List<GeoUnitSummaryDto> findMunicipalitiesByNuts3(String nuts3Code) {
-        if (!geoUnitRepository.existsById(nuts3Code)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + nuts3Code);
-        }
-        return geoUnitRepository.findSummaryListByNuts3Code(nuts3Code);
-    }
-
     public GeoUnitSummaryDto findParent(String code) {
         GeoUnit unit = geoUnitRepository.findById(code)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));

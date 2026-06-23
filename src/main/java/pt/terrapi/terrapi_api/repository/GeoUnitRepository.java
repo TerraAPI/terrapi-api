@@ -97,24 +97,43 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
     Page<GeoUnitSummaryDto> findSummaryPageByType(@Param("type") GeoUnitType type, Pageable pageable);
 
     @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " LEFT JOIN gu.parent p WHERE gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByType(@Param("type") GeoUnitType type);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
             + " JOIN gu.parent p WHERE p.code = :parentCode ORDER BY gu.name")
     List<GeoUnitSummaryDto> findSummaryListByParentCode(@Param("parentCode") String parentCode);
 
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " JOIN gu.parent p WHERE p.code = :parentCode AND gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByParentCodeAndType(@Param("parentCode") String parentCode, @Param("type") GeoUnitType type);
+    @Query(value = """
+            WITH RECURSIVE descendants AS (
+                SELECT code FROM geo_units WHERE parent_code = :code OR nuts3_code = :code
+                UNION
+                SELECT g.code
+                FROM geo_units g
+                JOIN descendants d ON g.parent_code = d.code OR g.nuts3_code = d.code
+            )
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu JOIN descendants d ON gu.code = d.code
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findDescendants(@Param("code") String code);
 
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " JOIN gu.parent p WHERE p.parent.code = :grandparentCode AND gu.type = :type ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByGrandparentCodeAndType(@Param("grandparentCode") String grandparentCode, @Param("type") GeoUnitType type);
-
-    @Query(SUMMARY_PROJECTION + FROM_GEO_UNIT
-            + " LEFT JOIN gu.parent p WHERE gu.nuts3Code = :nuts3Code ORDER BY gu.name")
-    List<GeoUnitSummaryDto> findSummaryListByNuts3Code(@Param("nuts3Code") String nuts3Code);
+    @Query(value = """
+            WITH RECURSIVE descendants AS (
+                SELECT code FROM geo_units WHERE parent_code = :code OR nuts3_code = :code
+                UNION
+                SELECT g.code
+                FROM geo_units g
+                JOIN descendants d ON g.parent_code = d.code OR g.nuts3_code = d.code
+            )
+            SELECT gu.code AS code,
+                   COALESCE(gu.simplified_name, gu.name) AS name,
+                   gu.type AS type,
+                   gu.parent_code AS parentCode
+            FROM geo_units gu JOIN descendants d ON gu.code = d.code
+            WHERE gu.type = :type
+            ORDER BY name
+            """, nativeQuery = true)
+    List<GeoUnitSummaryProjection> findDescendantsByType(@Param("code") String code, @Param("type") int type);
 
     @Query(value = """
             SELECT g.code AS code,

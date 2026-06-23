@@ -17,10 +17,8 @@ import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
 import pt.terrapi.terrapi_api.dto.PointDto;
-import pt.terrapi.terrapi_api.dto.ReverseGeocodeResponse;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.enums.ReverseGeocodeScope;
 import pt.terrapi.terrapi_api.mappers.GeoUnitMapper;
 import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
 
@@ -58,29 +56,34 @@ public class GeoUnitQueryService {
         return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findNeighbours(code));
     }
 
-    public List<GeoUnitSummaryDto> findAllByType(GeoUnitType type) {
-        return geoUnitRepository.findSummaryListByType(type);
+    public GeoUnitSummaryDto findParent(String code) {
+        GeoUnit unit = geoUnitRepository.findById(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));
+        GeoUnit parent = unit.getParent();
+        if (parent == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit has no parent: " + code);
+        }
+        return GeoUnitMapper.toMinimalDto(parent);
     }
 
-    public List<GeoUnitSummaryDto> findChildrenOfType(String parentCode, GeoUnitType type) {
-        if (!geoUnitRepository.existsById(parentCode)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + parentCode);
+    public List<GeoUnitSummaryDto> findDescendants(String code, GeoUnitType type) {
+        GeoUnit unit = geoUnitRepository.findById(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));
+        if (type == null) {
+            return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendants(code));
         }
-        return geoUnitRepository.findSummaryListByParentCodeAndType(parentCode, type);
-    }
-
-    public List<GeoUnitSummaryDto> findGrandchildrenOfType(String grandparentCode, GeoUnitType type) {
-        if (!geoUnitRepository.existsById(grandparentCode)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + grandparentCode);
+        GeoUnitType unitType = unit.getType();
+        if (type == unitType) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Requested type " + type + " is the same level as unit " + code
+                            + " (" + unitType + "); a unit cannot be its own descendant");
         }
-        return geoUnitRepository.findSummaryListByGrandparentCodeAndType(grandparentCode, type);
-    }
-
-    public List<GeoUnitSummaryDto> findMunicipalitiesByNuts3(String nuts3Code) {
-        if (!geoUnitRepository.existsById(nuts3Code)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + nuts3Code);
+        if (!unitType.canHaveDescendantOfType(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Type " + type + " is not a valid descendant level of " + unitType
+                            + " for unit " + code);
         }
-        return geoUnitRepository.findSummaryListByNuts3Code(nuts3Code);
+        return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendantsByType(code, type.getValue()));
     }
 
     public ContainsResponse pointInside(String code, double lat, double lon) {
@@ -113,13 +116,13 @@ public class GeoUnitQueryService {
     }
 
     public List<BatchReverseGeocodeResult> batchReverseGeocode(BatchReverseGeocodeRequest request) {
-        ReverseGeocodeScope scope = request.scope() != null ? request.scope() : ReverseGeocodeScope.ADMIN;
+        GeoUnitType type = request.type() != null ? request.type() : GeoUnitType.PARISH;
         List<PointDto> points = request.points() != null ? request.points() : List.of();
         List<BatchReverseGeocodeResult> results = new ArrayList<>(points.size());
         for (PointDto point : points) {
             try {
-                ReverseGeocodeResponse response = reverseGeocode(point.lat(), point.lon(), scope);
-                results.add(new BatchReverseGeocodeResult(point, true, response));
+                GeoUnitSummaryDto unit = reverseGeocode(point.lat(), point.lon(), type);
+                results.add(new BatchReverseGeocodeResult(point, true, unit));
             } catch (ResponseStatusException ex) {
                 if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
                     results.add(new BatchReverseGeocodeResult(point, false, null));
@@ -131,61 +134,12 @@ public class GeoUnitQueryService {
         return results;
     }
 
-    public ReverseGeocodeResponse reverseGeocode(double lat, double lon, ReverseGeocodeScope scope) {
-        String code = geoUnitRepository.findContainingCode(lon, lat, GeoUnitType.PARISH.getValue())
+    public GeoUnitSummaryDto reverseGeocode(double lat, double lon, GeoUnitType type) {
+        GeoUnitType targetType = type != null ? type : GeoUnitType.PARISH;
+        String code = geoUnitRepository.findContainingCode(lon, lat, targetType.getValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No geographic unit found at this location"));
-        GeoUnit parish = geoUnitRepository.findById(code).orElseThrow();
-
-        return switch (scope) {
-            case ADMIN -> {
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit current = parish;
-                while (current.getParent() != null) {
-                    current = current.getParent();
-                    if (!current.getType().isAdministrative()) break;
-                    ancestors.add(GeoUnitMapper.toMinimalDto(current));
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(parish), ancestors);
-            }
-            case ADMIN_NUTS -> {
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit municipality = parish.getParent();
-                if (municipality != null && municipality.getType() == GeoUnitType.MUNICIPALITY) {
-                    ancestors.add(GeoUnitMapper.toMinimalDto(municipality));
-                    String nuts3Code = municipality.getNuts3Code();
-                    if (nuts3Code != null) {
-                        geoUnitRepository.findById(nuts3Code).ifPresent(nuts3Unit -> {
-                            GeoUnit n = nuts3Unit;
-                            while (n != null) {
-                                ancestors.add(GeoUnitMapper.toMinimalDto(n));
-                                n = n.getParent();
-                            }
-                        });
-                    }
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(parish), ancestors);
-            }
-            case NUTS -> {
-                GeoUnit municipality = parish.getParent();
-                String nuts3Code = municipality != null && municipality.getType() == GeoUnitType.MUNICIPALITY
-                        ? municipality.getNuts3Code()
-                        : null;
-                if (nuts3Code == null) {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "No NUTS unit found at this location");
-                }
-                GeoUnit nuts3 = geoUnitRepository.findById(nuts3Code)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "No NUTS unit found at this location"));
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit n = nuts3.getParent();
-                while (n != null) {
-                    ancestors.add(GeoUnitMapper.toMinimalDto(n));
-                    n = n.getParent();
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(nuts3), ancestors);
-            }
-        };
+        GeoUnit unit = geoUnitRepository.findById(code).orElseThrow();
+        return GeoUnitMapper.toMinimalDto(unit);
     }
 }

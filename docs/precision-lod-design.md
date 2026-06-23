@@ -117,7 +117,8 @@ Two geometry-serving surfaces, fed from one nested topology:
   dissolution (see *Hierarchical nesting*). Used for selection and choropleth.
 - **`/api/v1/borders`** — the classified boundary-*line* network (CAOP `trocos`): each shared
   edge carries `level` (1 national … 5 parish), `lineType` (LAND/COAST/WATER) and `lengthKm`,
-  and is drawn once. Used for boundary overlays / styling.
+  and is drawn once. Used for boundary overlays / styling. Served full-detail by default; pass
+  `?lod={0..2}` for the simplified tier (`border_segment_precisions`).
 
 Because layers are nested, a coarser layer's outline **is** the union of its children's edges, so
 fills across levels align exactly and a fill outline coincides with the corresponding border line.
@@ -127,3 +128,19 @@ its **edge-level semantics**: the border `level` (for thick-national / thin-pari
 especially the coastline/water `lineType`, which is **not** derivable from admin polygons. It is
 also the better rendering primitive — each shared edge is stroked once instead of double-drawn by
 polygon outlines.
+
+## Border precision (LOD)
+
+Borders are originally ingested at **full detail** from CAOP `trocos` into `border_segments`
+(EPSG:4326, no simplification). To match the layer LOD ladder, each arc is **independently**
+line-simplified into `border_segment_precisions` per LOD using
+`ST_SimplifyPreserveTopology(geom_3763, tolerance)` (the **same** `terrapi.precision.lod` ladder as
+the layers, stored in 3857). Arc endpoints — the shared network nodes between `trocos` — are
+preserved by Douglas–Peucker, so the line network stays connected and per-arc non-self-intersecting.
+
+Generation runs **inside** `PrecisionWriter.write`, in the same transaction and under the same
+`generation_id` as the layer hierarchy: borders and layers rebuild atomically, share one
+invalidation key, and roll back together on an unhealthy result (border rows are folded into the
+validation counts). Because each arc is simplified independently (not coverage-derived), border
+lines *track* but do **not** byte-exactly coincide with the `ST_CoverageSimplify`'d layer fills at
+`lod > 0`. The full-detail `border_segments` remain the precise/no-`lod` surface.

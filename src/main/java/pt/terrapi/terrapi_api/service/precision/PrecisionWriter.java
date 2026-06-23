@@ -92,6 +92,31 @@ public class PrecisionWriter {
             ) x
             """;
 
+    /**
+     * Independently line-simplify each classified border arc ({@code ST_SimplifyPreserveTopology})
+     * per LOD. Arc endpoints (shared network nodes) are preserved, so the network stays connected.
+     * Edge-level semantics ({@code level}, {@code lineType}) are carried through from the source.
+     */
+    private static final String INSERT_BORDER_SQL = """
+            INSERT INTO border_segment_precisions
+                (border_segment_id, level, line_type, length_km, lod, geometry,
+                 tolerance_m, vertex_count, generation_id, created_at)
+            SELECT id, level, line_type, length_km, ?, ST_Transform(simplified_3763, 3857),
+                   ?, ST_NPoints(simplified_3763), ?, NOW()
+            FROM (
+                SELECT b.id, b.level, b.line_type, b.length_km,
+                       ST_SimplifyPreserveTopology(
+                           ST_Transform(
+                               CASE WHEN ST_SRID(b.geometry) = 0
+                                    THEN ST_SetSRID(b.geometry, 4326)
+                                    ELSE b.geometry END,
+                               3763), ?) AS simplified_3763
+                FROM border_segments b
+                WHERE b.geometry IS NOT NULL AND NOT ST_IsEmpty(b.geometry)
+            ) s
+            WHERE simplified_3763 IS NOT NULL AND NOT ST_IsEmpty(simplified_3763)
+            """;
+
     private static final String ALL_UNITS_COUNT_SQL =
             "SELECT COUNT(*) FROM geo_units WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)";
 
@@ -99,13 +124,21 @@ public class PrecisionWriter {
 
     private static final String DELETE_LOD_SQL = "DELETE FROM geo_unit_precisions WHERE lod = ?";
 
+    private static final String DELETE_BORDER_ALL_SQL = "DELETE FROM border_segment_precisions";
+
+    private static final String DELETE_BORDER_LOD_SQL =
+            "DELETE FROM border_segment_precisions WHERE lod = ?";
+
     private static final String VALIDATE_SQL = """
             SELECT COALESCE(COUNT(*), 0) AS total_rows,
                    COALESCE(COUNT(*) FILTER (WHERE geometry IS NULL), 0) AS null_count,
                    COALESCE(COUNT(*) FILTER (WHERE NOT ST_IsValid(geometry)), 0) AS invalid_count,
                    COALESCE(COUNT(*) FILTER (WHERE ST_IsEmpty(geometry)), 0) AS empty_count
-            FROM geo_unit_precisions
-            WHERE generation_id = ?
+            FROM (
+                SELECT geometry FROM geo_unit_precisions WHERE generation_id = ?
+                UNION ALL
+                SELECT geometry FROM border_segment_precisions WHERE generation_id = ?
+            ) g
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -161,6 +194,12 @@ public class PrecisionWriter {
         dissolveByColumn(NUTS3, MUNICIPALITY, lod, t, "u.nuts3_code", generationId);
         dissolveByColumn(NUTS2, NUTS3, lod, t, "u.parent_code", generationId);
         dissolveByColumn(NUTS1, NUTS2, lod, t, "u.parent_code", generationId);
+        insertBorderPrecisions(level, generationId);
+    }
+
+    private void insertBorderPrecisions(LodLevel level, UUID generationId) {
+        jdbcTemplate.update(INSERT_BORDER_SQL,
+                level.lod(), level.tolerance(), generationId, level.tolerance());
     }
 
     private void insertParishBase(LodLevel level, UUID generationId) {
@@ -193,8 +232,10 @@ public class PrecisionWriter {
     private void deleteScope(Integer lod) {
         if (lod == null) {
             jdbcTemplate.update(DELETE_ALL_SQL);
+            jdbcTemplate.update(DELETE_BORDER_ALL_SQL);
         } else {
             jdbcTemplate.update(DELETE_LOD_SQL, lod);
+            jdbcTemplate.update(DELETE_BORDER_LOD_SQL, lod);
         }
     }
 
@@ -210,7 +251,7 @@ public class PrecisionWriter {
                         rs.getInt("null_count"),
                         rs.getInt("invalid_count"),
                         rs.getInt("empty_count")),
-                generationId);
+                generationId, generationId);
     }
 
     private boolean isHealthy(ValidationResult v, int totalUnits, int totalLods) {

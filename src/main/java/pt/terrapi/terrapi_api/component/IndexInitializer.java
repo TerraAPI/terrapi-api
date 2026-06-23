@@ -25,6 +25,13 @@ public class IndexInitializer {
             jdbcTemplate.execute(
                     "CREATE INDEX IF NOT EXISTS idx_border_geometry"
                             + " ON border_segments USING GIST (geometry)");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_bsp_geometry"
+                            + " ON border_segment_precisions USING GIST (geometry)");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_bsp_level_lod"
+                            + " ON border_segment_precisions (level, lod)"
+                            + " INCLUDE (border_segment_id)");
             jdbcTemplate.execute("""
                     CREATE TABLE IF NOT EXISTS geo_unit_adjacency (
                         code VARCHAR(6) NOT NULL,

@@ -2,6 +2,14 @@ services:
   postgres:
     image: postgis/postgis:18-3.6-alpine
     container_name: terrapi-db
+    command:
+      - postgres
+      - -c
+      - maintenance_work_mem=2GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - synchronous_commit=off
     environment:
       POSTGRES_DB: terrapi
       POSTGRES_USER: terrapi

@@ -73,14 +73,11 @@ public class OsmImportService {
         }
 
         Path style = null;
-        Path flatNodes = null;
         long t0 = System.currentTimeMillis();
         try {
             style = extractStyle();
-            flatNodes = Files.createTempFile("osm2pgsql_nodes_", ".cache");
-            Files.deleteIfExists(flatNodes);
 
-            runOsm2pgsql(pbf.getAbsolutePath(), style, flatNodes);
+            runOsm2pgsql(pbf.getAbsolutePath(), style);
 
             ImportResult result = countByHighway();
             if (result.total() == 0) {
@@ -94,23 +91,40 @@ public class OsmImportService {
             throw new RuntimeException("OSM import failed: " + e.getMessage(), e);
         } finally {
             deleteQuietly(style);
-            deleteQuietly(flatNodes);
         }
     }
 
-    private void runOsm2pgsql(String pbfPath, Path style, Path flatNodes) throws IOException {
+    private void runOsm2pgsql(String pbfPath, Path style) throws IOException {
+        int processes = properties.getNumberProcesses() > 0
+                ? properties.getNumberProcesses()
+                : Runtime.getRuntime().availableProcessors();
+
         List<String> cmd = new ArrayList<>(List.of(
                 properties.getOsm2pgsqlPath(),
                 "--output=flex",
                 "--style=" + style.toAbsolutePath(),
-                "-d", dbUri,
-                "--slim",
-                "--drop",
-                "--flat-nodes", flatNodes.toAbsolutePath().toString(),
-                "--cache", String.valueOf(properties.getCacheMb()),
-                pbfPath));
+                "-d", dbUri));
 
-        log.info("Running: {}", String.join(" ", cmd));
+        Path flatNodes = null;
+        if (properties.isSlim()) {
+            flatNodes = Files.createTempFile("osm2pgsql_nodes_", ".cache");
+            Files.deleteIfExists(flatNodes);
+            cmd.add("--slim");
+            cmd.add("--drop");
+            cmd.add("--flat-nodes");
+            cmd.add(flatNodes.toAbsolutePath().toString());
+            cmd.add("--cache");
+            cmd.add("0");
+        }
+        // non-slim: middle is held in RAM; osm2pgsql rejects --cache outside slim mode.
+        cmd.add("--number-processes");
+        cmd.add(String.valueOf(processes));
+        cmd.add("--log-progress=true");
+        cmd.add(pbfPath);
+
+        log.info("Running osm2pgsql ({} mode): {}",
+                properties.isSlim() ? "slim" : "non-slim", String.join(" ", cmd));
+        try {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.environment().put("PGUSER", dbUser);
         pb.environment().put("PGPASSWORD", dbPassword);
@@ -126,14 +140,28 @@ public class OsmImportService {
         }
 
         Deque<String> tail = new ArrayDeque<>();
+        long throttleMs = Math.max(0, properties.getLogProgressSeconds()) * 1000L;
+        long lastProgressLog = 0;
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                log.info("[osm2pgsql] {}", line);
+                log.debug("[osm2pgsql] {}", line);
                 tail.addLast(line);
                 if (tail.size() > ERROR_TAIL_LINES) {
                     tail.removeFirst();
+                }
+                if (line.isBlank()) {
+                    continue;
+                }
+                if (line.contains("Processing:")) {
+                    long now = System.currentTimeMillis();
+                    if (now - lastProgressLog >= throttleMs) {
+                        log.info("[osm2pgsql] {}", line.trim());
+                        lastProgressLog = now;
+                    }
+                } else {
+                    log.info("[osm2pgsql] {}", line.trim());
                 }
             }
         }
@@ -149,6 +177,9 @@ public class OsmImportService {
         if (exit != 0) {
             throw new IllegalStateException(
                     "osm2pgsql exited with code " + exit + ":\n" + String.join("\n", tail));
+        }
+        } finally {
+            deleteQuietly(flatNodes);
         }
     }
 

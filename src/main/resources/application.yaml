@@ -26,7 +26,9 @@ terrapi:
   osm:
     osm2pgsql-path: ${OSM2PGSQL_PATH:osm2pgsql}
     style-resource: osm/routing-edges.lua
-    cache-mb: 1024
+    slim: ${OSM_SLIM:false}
+    number-processes: 0
+    log-progress-seconds: 10
   precision:
     simplify-boundary: false
     lod:

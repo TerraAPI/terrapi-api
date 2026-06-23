@@ -17,6 +17,16 @@ public class OsmProperties {
     /** Classpath location of the flex Lua style. */
     private String styleResource = "osm/routing-edges.lua";
 
-    /** osm2pgsql node cache size in MB (kept small to stay gentle on the running server). */
-    private int cacheMb = 1024;
+    /**
+     * Slim mode. {@code false} (default) keeps the middle in RAM — faster, but needs several GB of
+     * memory; best for dev and full reimports. {@code true} stores the middle on disk
+     * ({@code --slim --drop --flat-nodes}) — memory-gentle for constrained hosts, but slower.
+     */
+    private boolean slim = false;
+
+    /** Worker processes for osm2pgsql. 0 = auto (number of available CPU cores). */
+    private int numberProcesses = 0;
+
+    /** Throttle interval for progress log lines, in seconds (0 = log every progress line). */
+    private int logProgressSeconds = 10;
 }

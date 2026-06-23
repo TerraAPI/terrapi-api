@@ -17,9 +17,7 @@ import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeResult;
 import pt.terrapi.terrapi_api.dto.ContainsResponse;
 import pt.terrapi.terrapi_api.dto.GeoJsonFeatureDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.ReverseGeocodeResponse;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.enums.ReverseGeocodeScope;
 import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
 
 @RestController
@@ -34,13 +32,13 @@ public class GeoController {
     }
 
     @GetMapping("/reverse-geocode")
-    @Operation(summary = "Reverse geocode a coordinate, returning the containing parish and its hierarchy")
-    public ResponseEntity<ReverseGeocodeResponse> reverseGeocode(
+    @Operation(summary = "Reverse geocode a coordinate, returning the containing unit")
+    public ResponseEntity<GeoUnitSummaryDto> reverseGeocode(
             @Parameter(description = "Latitude") @RequestParam double lat,
             @Parameter(description = "Longitude") @RequestParam double lon,
-            @Parameter(description = "Scope: ADMIN, ADMIN_NUTS, NUTS")
-            @RequestParam(defaultValue = "ADMIN") ReverseGeocodeScope scope) {
-        return ResponseEntity.ok(geoUnitQueryService.reverseGeocode(lat, lon, scope));
+            @Parameter(description = "Unit type to resolve (default PARISH)")
+            @RequestParam(defaultValue = "PARISH") GeoUnitType type) {
+        return ResponseEntity.ok(geoUnitQueryService.reverseGeocode(lat, lon, type));
     }
 
     @PostMapping("/reverse-geocode/batch")

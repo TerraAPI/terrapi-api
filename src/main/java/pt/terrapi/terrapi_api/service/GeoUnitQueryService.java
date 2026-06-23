@@ -17,10 +17,8 @@ import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
 import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
 import pt.terrapi.terrapi_api.dto.PagedResponse;
 import pt.terrapi.terrapi_api.dto.PointDto;
-import pt.terrapi.terrapi_api.dto.ReverseGeocodeResponse;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.enums.ReverseGeocodeScope;
 import pt.terrapi.terrapi_api.mappers.GeoUnitMapper;
 import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
 
@@ -118,13 +116,13 @@ public class GeoUnitQueryService {
     }
 
     public List<BatchReverseGeocodeResult> batchReverseGeocode(BatchReverseGeocodeRequest request) {
-        ReverseGeocodeScope scope = request.scope() != null ? request.scope() : ReverseGeocodeScope.ADMIN;
+        GeoUnitType type = request.type() != null ? request.type() : GeoUnitType.PARISH;
         List<PointDto> points = request.points() != null ? request.points() : List.of();
         List<BatchReverseGeocodeResult> results = new ArrayList<>(points.size());
         for (PointDto point : points) {
             try {
-                ReverseGeocodeResponse response = reverseGeocode(point.lat(), point.lon(), scope);
-                results.add(new BatchReverseGeocodeResult(point, true, response));
+                GeoUnitSummaryDto unit = reverseGeocode(point.lat(), point.lon(), type);
+                results.add(new BatchReverseGeocodeResult(point, true, unit));
             } catch (ResponseStatusException ex) {
                 if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
                     results.add(new BatchReverseGeocodeResult(point, false, null));
@@ -136,61 +134,12 @@ public class GeoUnitQueryService {
         return results;
     }
 
-    public ReverseGeocodeResponse reverseGeocode(double lat, double lon, ReverseGeocodeScope scope) {
-        String code = geoUnitRepository.findContainingCode(lon, lat, GeoUnitType.PARISH.getValue())
+    public GeoUnitSummaryDto reverseGeocode(double lat, double lon, GeoUnitType type) {
+        GeoUnitType targetType = type != null ? type : GeoUnitType.PARISH;
+        String code = geoUnitRepository.findContainingCode(lon, lat, targetType.getValue())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No geographic unit found at this location"));
-        GeoUnit parish = geoUnitRepository.findById(code).orElseThrow();
-
-        return switch (scope) {
-            case ADMIN -> {
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit current = parish;
-                while (current.getParent() != null) {
-                    current = current.getParent();
-                    if (!current.getType().isAdministrative()) break;
-                    ancestors.add(GeoUnitMapper.toMinimalDto(current));
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(parish), ancestors);
-            }
-            case ADMIN_NUTS -> {
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit municipality = parish.getParent();
-                if (municipality != null && municipality.getType() == GeoUnitType.MUNICIPALITY) {
-                    ancestors.add(GeoUnitMapper.toMinimalDto(municipality));
-                    String nuts3Code = municipality.getNuts3Code();
-                    if (nuts3Code != null) {
-                        geoUnitRepository.findById(nuts3Code).ifPresent(nuts3Unit -> {
-                            GeoUnit n = nuts3Unit;
-                            while (n != null) {
-                                ancestors.add(GeoUnitMapper.toMinimalDto(n));
-                                n = n.getParent();
-                            }
-                        });
-                    }
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(parish), ancestors);
-            }
-            case NUTS -> {
-                GeoUnit municipality = parish.getParent();
-                String nuts3Code = municipality != null && municipality.getType() == GeoUnitType.MUNICIPALITY
-                        ? municipality.getNuts3Code()
-                        : null;
-                if (nuts3Code == null) {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "No NUTS unit found at this location");
-                }
-                GeoUnit nuts3 = geoUnitRepository.findById(nuts3Code)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "No NUTS unit found at this location"));
-                List<GeoUnitSummaryDto> ancestors = new ArrayList<>();
-                GeoUnit n = nuts3.getParent();
-                while (n != null) {
-                    ancestors.add(GeoUnitMapper.toMinimalDto(n));
-                    n = n.getParent();
-                }
-                yield new ReverseGeocodeResponse(GeoUnitMapper.toMinimalDto(nuts3), ancestors);
-            }
-        };
+        GeoUnit unit = geoUnitRepository.findById(code).orElseThrow();
+        return GeoUnitMapper.toMinimalDto(unit);
     }
 }

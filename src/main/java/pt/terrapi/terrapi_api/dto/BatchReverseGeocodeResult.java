@@ -8,6 +8,6 @@ public record BatchReverseGeocodeResult(
         PointDto point,
         @Schema(description = "Whether a containing unit was found")
         boolean found,
-        @Schema(description = "Reverse geocode result, null when not found")
-        ReverseGeocodeResponse result
+        @Schema(description = "The containing unit, null when not found")
+        GeoUnitSummaryDto unit
 ) {}

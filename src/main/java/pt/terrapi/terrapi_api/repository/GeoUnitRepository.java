@@ -118,9 +118,11 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
     @Query(value = """
             WITH RECURSIVE descendants AS (
-                SELECT code FROM geo_units WHERE parent_code = :code
-                UNION ALL
-                SELECT g.code FROM geo_units g JOIN descendants d ON g.parent_code = d.code
+                SELECT code FROM geo_units WHERE parent_code = :code OR nuts3_code = :code
+                UNION
+                SELECT g.code
+                FROM geo_units g
+                JOIN descendants d ON g.parent_code = d.code OR g.nuts3_code = d.code
             )
             SELECT gu.code AS code,
                    COALESCE(gu.simplified_name, gu.name) AS name,
@@ -133,9 +135,11 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
     @Query(value = """
             WITH RECURSIVE descendants AS (
-                SELECT code FROM geo_units WHERE parent_code = :code
-                UNION ALL
-                SELECT g.code FROM geo_units g JOIN descendants d ON g.parent_code = d.code
+                SELECT code FROM geo_units WHERE parent_code = :code OR nuts3_code = :code
+                UNION
+                SELECT g.code
+                FROM geo_units g
+                JOIN descendants d ON g.parent_code = d.code OR g.nuts3_code = d.code
             )
             SELECT gu.code AS code,
                    COALESCE(gu.simplified_name, gu.name) AS name,

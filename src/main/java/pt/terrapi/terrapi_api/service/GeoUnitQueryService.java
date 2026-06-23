@@ -94,13 +94,23 @@ public class GeoUnitQueryService {
     }
 
     public List<GeoUnitSummaryDto> findDescendants(String code, GeoUnitType type) {
-        if (!geoUnitRepository.existsById(code)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code);
+        GeoUnit unit = geoUnitRepository.findById(code)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unit not found: " + code));
+        if (type == null) {
+            return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendants(code));
         }
-        if (type != null) {
-            return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendantsByType(code, type.getValue()));
+        GeoUnitType unitType = unit.getType();
+        if (type == unitType) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Requested type " + type + " is the same level as unit " + code
+                            + " (" + unitType + "); a unit cannot be its own descendant");
         }
-        return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendants(code));
+        if (!unitType.canHaveDescendantOfType(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Type " + type + " is not a valid descendant level of " + unitType
+                            + " for unit " + code);
+        }
+        return GeoUnitMapper.toSummaryDtoList(geoUnitRepository.findDescendantsByType(code, type.getValue()));
     }
 
     public ContainsResponse pointInside(String code, double lat, double lon) {

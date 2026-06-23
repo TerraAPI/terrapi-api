@@ -61,4 +61,12 @@ public class GeoUnitController {
         return ResponseEntity.ok(geoUnitQueryService.findChildren(id));
     }
 
+    @GetMapping("/{id}/neighbours")
+    @Operation(summary = "List units sharing a border with this unit (same level)")
+    public ResponseEntity<List<GeoUnitSummaryDto>> findNeighbours(
+            @Parameter(description = "Geographic unit code")
+            @PathVariable String id) {
+        return ResponseEntity.ok(geoUnitQueryService.findNeighbours(id));
+    }
+
 }

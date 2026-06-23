@@ -1,5 +1,6 @@
 package pt.terrapi.terrapi_api.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
  * created/updated the schema. A Flyway migration cannot do this because Flyway runs before
  * {@code hibernate.ddl-auto} creates the table. The statement is idempotent.
  */
+@Slf4j
 @Component
 public class SpatialIndexInitializer implements ApplicationRunner {
 
@@ -24,6 +26,10 @@ public class SpatialIndexInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        jdbcTemplate.execute(CREATE_GEOMETRY_INDEX);
+        try {
+            jdbcTemplate.execute(CREATE_GEOMETRY_INDEX);
+        } catch (Exception e) {
+            log.warn("Could not create spatial index (non-PostGIS database?): {}", e.getMessage());
+        }
     }
 }

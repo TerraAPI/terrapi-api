@@ -24,73 +24,14 @@ spring:
 
 terrapi:
   precision:
-    topology-preserving: true
     simplify-boundary: false
-    coverage-snap-tolerance: 0.0
     lod:
-      PARISH:
-        - lod: 0
-          tolerance: 25
-        - lod: 1
-          tolerance: 50
-        - lod: 2
-          tolerance: 200
-        - lod: 3
-          tolerance: 800
-      MUNICIPALITY:
-        - lod: 0
-          tolerance: 40
-        - lod: 1
-          tolerance: 100
-        - lod: 2
-          tolerance: 500
-        - lod: 3
-          tolerance: 2000
-      DISTRICT:
-        - lod: 0
-          tolerance: 80
-        - lod: 1
-          tolerance: 300
-        - lod: 2
-          tolerance: 1000
-        - lod: 3
-          tolerance: 5000
-      ISLAND:
-        - lod: 0
-          tolerance: 25
-        - lod: 1
-          tolerance: 100
-        - lod: 2
-          tolerance: 500
-        - lod: 3
-          tolerance: 2000
-      NUTS1:
-        - lod: 0
-          tolerance: 120
-        - lod: 1
-          tolerance: 500
-        - lod: 2
-          tolerance: 2000
-        - lod: 3
-          tolerance: 10000
-      NUTS2:
-        - lod: 0
-          tolerance: 80
-        - lod: 1
-          tolerance: 300
-        - lod: 2
-          tolerance: 1000
-        - lod: 3
-          tolerance: 5000
-      NUTS3:
-        - lod: 0
-          tolerance: 60
-        - lod: 1
-          tolerance: 200
-        - lod: 2
-          tolerance: 800
-        - lod: 3
-          tolerance: 3000
+      - lod: 0
+        tolerance: 25
+      - lod: 1
+        tolerance: 50
+      - lod: 2
+        tolerance: 200
     validation:
       max-null-pct: 0.5
       max-invalid-pct: 25.0

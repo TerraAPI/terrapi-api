@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.locationtech.jts.geom.Geometry;
-import pt.terrapi.terrapi_api.converters.GeoUnitTypeConverter;
+import org.locationtech.jts.geom.Point;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 @Getter
@@ -56,4 +56,25 @@ public class GeoUnit {
      */
     @Column(length = 5)
     private String nuts3Code;
+
+    /**
+     * Interior representative point (label/marker/fly-to), derived via ST_PointOnSurface.
+     */
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point representativePoint;
+
+    /**
+     * Number of child municipalities (DISTRICT, ISLAND, NUTS levels); null for leaf types.
+     */
+    private Integer municipalityCount;
+
+    /**
+     * Number of child parishes (DISTRICT, ISLAND, MUNICIPALITY, NUTS levels); null for parishes.
+     */
+    private Integer parishCount;
+
+    /**
+     * Total coastline length in kilometers (derived from boundary arcs); null if landlocked.
+     */
+    private Double coastlineKm;
 }

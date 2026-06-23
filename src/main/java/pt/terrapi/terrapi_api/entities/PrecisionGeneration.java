@@ -5,13 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.enums.GenerationType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,19 +24,17 @@ import java.util.UUID;
 public class PrecisionGeneration {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "generation_id")
     private UUID generationId;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private GenerationStatus status;
-
-    @Column(nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    private GenerationType type;
 
     @Column(name = "total_units")
     private int totalUnits;
@@ -52,16 +50,6 @@ public class PrecisionGeneration {
 
     @Column(name = "row_count")
     private int rowCount;
-
-    @PrePersist
-    void setDefaults() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-        if (generationId == null) {
-            generationId = UUID.randomUUID();
-        }
-    }
 
     public void updateCounters(int rowCount, int nullGeometries, int invalidGeometries,
                                int totalUnits, int totalLods) {

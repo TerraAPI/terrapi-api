@@ -12,30 +12,42 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.locationtech.jts.geom.Geometry;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
 
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * An LOD tier of a {@link BorderSegment}: the same classified boundary arc, independently
+ * line-simplified ({@code ST_SimplifyPreserveTopology}) per LOD. Mirrors {@link GeoUnitPrecision}
+ * for layer fills; carries the arc's edge-level semantics ({@code level}, {@code lineType}) so the
+ * border overlay can be served at the same LOD ladder as the layers.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "geo_unit_precisions", indexes = {
-        @Index(name = "idx_gp_code_lod", columnList = "geo_unit_code, lod"),
-        @Index(name = "idx_gp_generation_id", columnList = "generation_id")
+@Table(name = "border_segment_precisions", indexes = {
+        @Index(name = "idx_bsp_generation_id", columnList = "generation_id")
 })
-public class GeoUnitPrecision {
+public class BorderPrecision {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "geo_unit_code", length = 6, nullable = false)
-    private String geoUnitCode;
+    @Column(name = "border_segment_id", nullable = false)
+    private Long borderSegmentId;
 
-    @Column(nullable = false)
-    private GeoUnitType type;
+    /** Administrative order of the border: 1 (national/top) .. 5 (parish-level). */
+    @Column(name = "level")
+    private Integer level;
+
+    /** LAND, COAST or WATER (from the source {@link BorderSegment}). */
+    @Column(name = "line_type", length = 10)
+    private String lineType;
+
+    @Column(name = "length_km")
+    private Double lengthKm;
 
     @Column(nullable = false)
     private int lod;

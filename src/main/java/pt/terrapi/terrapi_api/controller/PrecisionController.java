@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.enums.GenerationType;
-import pt.terrapi.terrapi_api.service.PrecisionGenerationService;
+import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
 @RestController
 @RequestMapping("/api/v1/precision")
@@ -24,11 +23,11 @@ public class PrecisionController {
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "Generate simplified geometries for specified unit types")
+    @Operation(summary = "Generate simplified geometries (rebuilds the whole nested hierarchy)")
     public ResponseEntity<GenerationResult> generate(
-            @Parameter(description = "Unit type: ALL, DISTRICT, MUNICIPALITY, PARISH, ISLAND, NUTS1, NUTS2, NUTS3")
-            @RequestParam(defaultValue = "ALL") GenerationType type) {
-        GenerationResult result = precisionGenerationService.generate(type);
+            @Parameter(description = "LOD level to (re)generate; omit to generate all configured LODs")
+            @RequestParam(required = false) Integer lod) {
+        GenerationResult result = precisionGenerationService.generate(lod);
         return ResponseEntity.ok(result);
     }
 }

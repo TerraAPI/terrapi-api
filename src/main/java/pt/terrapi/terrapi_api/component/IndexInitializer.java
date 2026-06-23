@@ -19,9 +19,28 @@ public class IndexInitializer {
             jdbcTemplate.execute(
                     "CREATE INDEX IF NOT EXISTS idx_gp_geometry ON geo_unit_precisions USING GIST (geometry)");
             jdbcTemplate.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_gp_type_lod_status"
-                            + " ON geo_unit_precisions (type, lod, status)"
+                    "CREATE INDEX IF NOT EXISTS idx_gp_type_lod"
+                            + " ON geo_unit_precisions (type, lod)"
                             + " INCLUDE (geo_unit_code)");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_border_geometry"
+                            + " ON border_segments USING GIST (geometry)");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_bsp_geometry"
+                            + " ON border_segment_precisions USING GIST (geometry)");
+            jdbcTemplate.execute("DROP INDEX IF EXISTS idx_bsp_level_lod");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_bsp_lod_level"
+                            + " ON border_segment_precisions (lod, level)"
+                            + " INCLUDE (border_segment_id)");
+            jdbcTemplate.execute("""
+                    CREATE TABLE IF NOT EXISTS geo_unit_adjacency (
+                        code VARCHAR(6) NOT NULL,
+                        neighbour_code VARCHAR(6) NOT NULL,
+                        PRIMARY KEY (code, neighbour_code)
+                    )""");
+            jdbcTemplate.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_adjacency_code ON geo_unit_adjacency (code)");
         } catch (Exception e) {
             log.warn("Could not create index (table may not exist yet): {}", e.getMessage());
         }

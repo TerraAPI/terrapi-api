@@ -11,7 +11,6 @@ import org.mockito.quality.Strictness;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
@@ -39,7 +38,7 @@ class PrecisionGenerationServiceTest {
         when(writer.write(any(UUID.class), isNull()))
                 .thenReturn(new WriteResult(10, 0, 0, 5, 2));
 
-        GenerationResult result = service.generate(GenerationType.ALL);
+        GenerationResult result = service.generate();
 
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
         assertThat(result.rowCount()).isEqualTo(10);
@@ -51,7 +50,7 @@ class PrecisionGenerationServiceTest {
         when(writer.write(any(UUID.class), isNull()))
                 .thenThrow(new PrecisionWriter.GenerationFailedException("unhealthy"));
 
-        GenerationResult result = service.generate(GenerationType.ALL);
+        GenerationResult result = service.generate();
 
         assertThat(result.status()).isEqualTo(GenerationStatus.FAILED);
         assertThat(result.rowCount()).isEqualTo(0);
@@ -66,7 +65,7 @@ class PrecisionGenerationServiceTest {
         when(writer.write(any(UUID.class), eq(2)))
                 .thenReturn(new WriteResult(3, 0, 0, 3, 1));
 
-        service.generate(GenerationType.ALL, 2);
+        service.generate(2);
 
         verify(writer).write(any(UUID.class), eq(2));
     }
@@ -76,7 +75,7 @@ class PrecisionGenerationServiceTest {
         when(writer.write(any(UUID.class), isNull()))
                 .thenReturn(new WriteResult(1, 0, 0, 1, 1));
 
-        service.generate(GenerationType.ALL);
+        service.generate();
 
         verify(writer).write(any(UUID.class), isNull());
     }

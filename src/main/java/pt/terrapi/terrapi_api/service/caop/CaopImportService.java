@@ -13,7 +13,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
@@ -109,7 +108,7 @@ public class CaopImportService {
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("Precision generation started (async)");
-                        precisionGenerationService.generate(GenerationType.ALL);
+                        precisionGenerationService.generate();
                     } catch (Exception e) {
                         log.error("Precision generation failed after import", e);
                     }

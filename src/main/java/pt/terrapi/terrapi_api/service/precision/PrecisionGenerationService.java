@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.enums.GenerationType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
@@ -30,11 +29,11 @@ public class PrecisionGenerationService {
         this.generationRepository = generationRepository;
     }
 
-    public GenerationResult generate(GenerationType generationType) {
-        return generate(generationType, null);
+    public GenerationResult generate() {
+        return generate((Integer) null);
     }
 
-    public GenerationResult generate(GenerationType generationType, Integer lod) {
+    public GenerationResult generate(Integer lod) {
         long t0 = System.currentTimeMillis();
         UUID generationId = UUID.randomUUID();
 
@@ -42,24 +41,22 @@ public class PrecisionGenerationService {
 
         try {
             WriteResult result = writer.write(generationId, lod);
-            saveAudit(generationId, generationType, GenerationStatus.SUCCESS, result);
+            saveAudit(generationId, GenerationStatus.SUCCESS, result);
             log.info("Generation {} SUCCESS — {} rows in {} ms",
                     generationId, result.rowCount(), System.currentTimeMillis() - t0);
             return new GenerationResult(generationId, GenerationStatus.SUCCESS, result.rowCount());
         } catch (Exception e) {
             log.error("Generation {} FAILED (rolled back)", generationId, e);
-            saveAudit(generationId, generationType, GenerationStatus.FAILED, WriteResult.empty());
+            saveAudit(generationId, GenerationStatus.FAILED, WriteResult.empty());
             return new GenerationResult(generationId, GenerationStatus.FAILED, 0);
         }
     }
 
-    private void saveAudit(UUID generationId, GenerationType type,
-                           GenerationStatus status, WriteResult result) {
+    private void saveAudit(UUID generationId, GenerationStatus status, WriteResult result) {
         PrecisionGeneration gen = new PrecisionGeneration();
         gen.setGenerationId(generationId);
         gen.setCreatedAt(Instant.now());
         gen.setStatus(status);
-        gen.setType(type);
         gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                 result.totalUnits(), result.totalLods());
         generationRepository.save(gen);

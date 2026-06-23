@@ -11,7 +11,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.enums.GenerationType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -33,10 +32,6 @@ public class PrecisionGeneration {
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private GenerationStatus status;
-
-    @Column(nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    private GenerationType type;
 
     @Column(name = "total_units")
     private int totalUnits;

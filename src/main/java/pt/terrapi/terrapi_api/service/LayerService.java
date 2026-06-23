@@ -33,7 +33,23 @@ public class LayerService {
                     'id', gp.geo_unit_code,
                     'properties', jsonb_build_object(
                         'code', gp.geo_unit_code,
-                        'name', COALESCE(u.simplified_name, u.name)),
+                        'name', COALESCE(u.simplified_name, u.name),
+                        'type', CASE u.type
+                            WHEN 1 THEN 'DISTRICT'
+                            WHEN 2 THEN 'MUNICIPALITY'
+                            WHEN 3 THEN 'PARISH'
+                            WHEN 7 THEN 'ISLAND'
+                            WHEN 11 THEN 'NUTS1'
+                            WHEN 12 THEN 'NUTS2'
+                            WHEN 13 THEN 'NUTS3'
+                        END,
+                        'parentCode', u.parent_code,
+                        'lon', CASE WHEN u.representative_point IS NOT NULL
+                                   THEN ST_X(u.representative_point) END,
+                        'lat', CASE WHEN u.representative_point IS NOT NULL
+                                   THEN ST_Y(u.representative_point) END,
+                        'municipalityCount', u.municipality_count,
+                        'parishCount', u.parish_count),
                     'geometry', ST_AsGeoJSON(ST_Transform(gp.geometry, 4326))::jsonb)), '[]'::jsonb))::text
             FROM geo_unit_precisions gp
             JOIN geo_units u ON u.code = gp.geo_unit_code

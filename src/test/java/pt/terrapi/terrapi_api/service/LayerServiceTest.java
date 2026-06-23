@@ -45,7 +45,7 @@ class LayerServiceTest {
         assertThat(sql)
                 .contains("geo_unit_precisions")
                 .contains("ST_Transform")
-                .doesNotContain("u.parent_code");
+                .doesNotContain("u.parent_code = ?");
     }
 
     @Test
@@ -55,6 +55,19 @@ class LayerServiceTest {
         assertThat(sql)
                 .contains("geo_unit_precisions")
                 .contains("u.parent_code = ?");
+    }
+
+    @Test
+    void buildLayerSql_includesEnrichedProperties() {
+        String sql = LayerService.buildLayerSql(false);
+
+        assertThat(sql)
+                .contains("'type', CASE u.type")
+                .contains("'parentCode', u.parent_code")
+                .contains("'lon', CASE")
+                .contains("'lat', CASE")
+                .contains("'municipalityCount', u.municipality_count")
+                .contains("'parishCount', u.parish_count");
     }
 
     @Test

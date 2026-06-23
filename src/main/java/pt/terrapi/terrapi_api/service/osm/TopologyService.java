@@ -7,26 +7,24 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Builds the routable car graph from the raw {@code routing_edges} table using pgRouting.
+ * Builds the routable car graph from the raw {@code routing_edges} table plus the {@code way_nodes}
+ * node references emitted by the osm2pgsql flex style.
  *
- * <p>The pipeline filters car-usable highways, nodes the network in PostGIS (splits ways at
- * intersection points so through-roads connect), derives the vertices with {@code pgr_extractVertices}
- * (the current, non-deprecated topology helper — {@code pgr_nodeNetwork}/{@code pgr_createTopology}
- * were removed in pgRouting 3.8), assigns {@code source}/{@code target}, and computes per-edge travel
- * time ({@code cost_s}/{@code reverse_cost_s}) from class speed defaults, {@code maxspeed} and
- * {@code oneway}. It is parameter-free and re-runnable: every run drops and rebuilds the derived
- * tables. The PostGIS noding step is the slow part — fine for a rare, post-import action.
+ * <p>Ways are noded at <b>shared OSM nodes</b> (the true intersections) rather than by computing
+ * geometry intersections: this is O(n), and the OSM node id <i>is</i> the graph vertex id, so
+ * {@code source}/{@code target} come for free (no vertex extraction, no spatial join). Per-edge
+ * travel time ({@code cost_s}/{@code reverse_cost_s}) is computed inline from class speed defaults,
+ * {@code maxspeed} and {@code oneway}. Parameter-free and re-runnable — every run drops and rebuilds
+ * the derived tables. Vertex/edge endpoint ids are OSM node ids, hence {@code bigint}.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TopologyService {
 
-    /** Snap tolerance (degrees, ~1mm) so intersection points sit exactly on the line for ST_Split. */
-    private static final String SNAP_TOL = "0.00000001";
-
+    /** Class-default speed (km/h), used when maxspeed is absent or zero; never returns 0. */
     private static final String SPEED_KMH = """
-            coalesce(NULLIF(maxspeed_kmh, 0), CASE highway
+            coalesce(NULLIF(c.maxspeed_kmh, 0), CASE c.highway
                 WHEN 'motorway' THEN 110 WHEN 'motorway_link' THEN 60
                 WHEN 'trunk' THEN 90 WHEN 'trunk_link' THEN 50
                 WHEN 'primary' THEN 80 WHEN 'primary_link' THEN 45
@@ -65,8 +63,7 @@ public class TopologyService {
                         """),
                 new Step("build car-routable edge subset", """
                         CREATE TABLE car_edges AS
-                        SELECT row_number() OVER () AS id,
-                               highway, oneway, junction, maxspeed_kmh, geom
+                        SELECT osm_id, highway, oneway, junction, maxspeed_kmh, geom
                         FROM routing_edges
                         WHERE highway IN ('motorway','motorway_link','trunk','trunk_link',
                                           'primary','primary_link','secondary','secondary_link',
@@ -75,76 +72,79 @@ public class TopologyService {
                           AND coalesce(motor_vehicle,'') NOT IN ('no','private')
                           AND coalesce(access,'') NOT IN ('no','private')
                           AND geom IS NOT NULL;
-                        ALTER TABLE car_edges ADD PRIMARY KEY (id);
-                        CREATE INDEX idx_car_edges_geom ON car_edges USING gist(geom);
+                        CREATE INDEX idx_car_edges_osmid ON car_edges(osm_id);
+                        ANALYZE car_edges;
                         """),
-                new Step("node the network at intersections (PostGIS)", """
+                new Step("node at shared OSM nodes + cost", """
+                        SET work_mem = '512MB';
                         CREATE TABLE car_edges_noded AS
-                        WITH inter AS (
-                            SELECT a.id AS old_id, ST_Collect(pt.geom) AS blade
-                            FROM car_edges a
-                            JOIN car_edges b
-                              ON a.id <> b.id AND ST_Intersects(a.geom, b.geom)
-                            CROSS JOIN LATERAL (
-                                SELECT (ST_Dump(ST_Intersection(a.geom, b.geom))).geom AS geom
-                            ) pt
-                            WHERE ST_GeometryType(pt.geom) = 'ST_Point'
-                            GROUP BY a.id
+                        WITH wn AS (
+                            SELECT w.way_id, w.seq, w.node_id
+                            FROM way_nodes w
+                            JOIN car_edges c ON c.osm_id = w.way_id
                         ),
-                        split AS (
-                            SELECT a.id AS old_id, a.highway, a.oneway, a.junction, a.maxspeed_kmh,
-                                   (ST_Dump(ST_Split(ST_Snap(a.geom, i.blade, %s), i.blade))).geom AS geom
-                            FROM car_edges a
-                            JOIN inter i ON a.id = i.old_id
-                            UNION ALL
-                            SELECT a.id, a.highway, a.oneway, a.junction, a.maxspeed_kmh, a.geom
-                            FROM car_edges a
-                            WHERE NOT EXISTS (SELECT 1 FROM inter i WHERE i.old_id = a.id)
+                        endpoints AS (
+                            SELECT way_id, min(seq) AS min_seq, max(seq) AS max_seq
+                            FROM wn GROUP BY way_id
+                        ),
+                        shared AS (
+                            SELECT node_id FROM wn GROUP BY node_id HAVING count(*) >= 2
+                        ),
+                        splits AS (
+                            SELECT w.way_id, w.seq, w.node_id
+                            FROM wn w
+                            JOIN endpoints e ON e.way_id = w.way_id
+                            WHERE w.seq = e.min_seq OR w.seq = e.max_seq
+                               OR w.node_id IN (SELECT node_id FROM shared)
+                        ),
+                        seg AS (
+                            SELECT row_number() OVER () AS id, way_id,
+                                   node_id::bigint AS source, seq AS s1,
+                                   lead(node_id) OVER (PARTITION BY way_id ORDER BY seq)::bigint AS target,
+                                   lead(seq)     OVER (PARTITION BY way_id ORDER BY seq) AS s2
+                            FROM splits
+                        ),
+                        pts AS (
+                            SELECT c.osm_id AS way_id, (dp.path)[1] AS seq, dp.geom AS pt
+                            FROM car_edges c CROSS JOIN LATERAL ST_DumpPoints(c.geom) AS dp
+                        ),
+                        geo AS (
+                            SELECT s.id, s.way_id, s.source, s.target,
+                                   max(c.oneway) AS oneway, max(c.junction) AS junction,
+                                   max(%s) AS speed_kmh,
+                                   ST_MakeLine(p.pt ORDER BY p.seq) AS geom
+                            FROM seg s
+                            JOIN pts p ON p.way_id = s.way_id AND p.seq BETWEEN s.s1 AND s.s2
+                            JOIN car_edges c ON c.osm_id = s.way_id
+                            WHERE s.s2 IS NOT NULL
+                            GROUP BY s.id, s.way_id, s.source, s.target
                         )
-                        SELECT row_number() OVER () AS id,
-                               old_id, highway, oneway, junction, maxspeed_kmh, geom
-                        FROM split
-                        WHERE ST_GeometryType(geom) = 'ST_LineString'
-                          AND ST_NPoints(geom) >= 2
-                          AND ST_Length(geom) > 0;
+                        SELECT id, way_id, source, target, geom,
+                               CASE WHEN oneway = '-1' THEN -1 ELSE t END AS cost_s,
+                               CASE WHEN oneway IN ('yes','true','1') OR junction = 'roundabout' THEN -1
+                                    ELSE t END AS reverse_cost_s
+                        FROM (
+                            SELECT id, way_id, source, target, oneway, junction, geom,
+                                   ST_Length(geom::geography) / (GREATEST(speed_kmh,1) / 3.6) AS t
+                            FROM geo
+                            WHERE ST_GeometryType(geom) = 'ST_LineString'
+                              AND ST_NPoints(geom) >= 2
+                              AND source <> target
+                              AND ST_Length(geom) > 0
+                        ) q;
                         ALTER TABLE car_edges_noded ADD PRIMARY KEY (id);
-                        CREATE INDEX idx_car_edges_noded_geom ON car_edges_noded USING gist(geom);
-                        """.formatted(SNAP_TOL)),
-                new Step("extract vertices", """
+                        ANALYZE car_edges_noded;
+                        """.formatted(SPEED_KMH)),
+                new Step("build vertices from node endpoints", """
                         CREATE TABLE car_edges_noded_vertices_pgr AS
-                        SELECT id, geom AS the_geom
-                        FROM pgr_extractVertices('SELECT id, geom FROM car_edges_noded');
+                        SELECT DISTINCT ON (id) id, the_geom FROM (
+                            SELECT source AS id, ST_StartPoint(geom) AS the_geom FROM car_edges_noded
+                            UNION ALL
+                            SELECT target AS id, ST_EndPoint(geom) AS the_geom FROM car_edges_noded
+                        ) u;
                         ALTER TABLE car_edges_noded_vertices_pgr ADD PRIMARY KEY (id);
                         CREATE INDEX idx_car_vertices_geom
                             ON car_edges_noded_vertices_pgr USING gist(the_geom);
-                        """),
-                new Step("assign source/target + cost columns", """
-                        ALTER TABLE car_edges_noded
-                            ADD COLUMN source integer,
-                            ADD COLUMN target integer,
-                            ADD COLUMN cost_s double precision,
-                            ADD COLUMN reverse_cost_s double precision;
-                        UPDATE car_edges_noded e SET source = v.id
-                        FROM car_edges_noded_vertices_pgr v
-                        WHERE ST_DWithin(v.the_geom, ST_StartPoint(e.geom), 0);
-                        UPDATE car_edges_noded e SET target = v.id
-                        FROM car_edges_noded_vertices_pgr v
-                        WHERE ST_DWithin(v.the_geom, ST_EndPoint(e.geom), 0);
-                        """),
-                new Step("compute travel-time cost", """
-                        UPDATE car_edges_noded n SET
-                            cost_s = CASE WHEN n.oneway = '-1' THEN -1 ELSE s.t END,
-                            reverse_cost_s = CASE
-                                WHEN n.oneway IN ('yes','true','1') OR n.junction = 'roundabout' THEN -1
-                                ELSE s.t END
-                        FROM (
-                            SELECT id, ST_Length(geom::geography) / (GREATEST(%s, 1) / 3.6) AS t
-                            FROM car_edges_noded
-                        ) s WHERE n.id = s.id;
-                        """.formatted(SPEED_KMH)),
-                new Step("index topology", """
-                        CREATE INDEX idx_car_edges_noded_source ON car_edges_noded(source);
-                        CREATE INDEX idx_car_edges_noded_target ON car_edges_noded(target);
                         """));
     }
 }

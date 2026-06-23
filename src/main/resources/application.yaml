@@ -23,6 +23,10 @@ spring:
     import: optional:file:.env[.properties]
 
 terrapi:
+  osm:
+    osm2pgsql-path: ${OSM2PGSQL_PATH:osm2pgsql}
+    style-resource: osm/routing-edges.lua
+    cache-mb: 1024
   precision:
     simplify-boundary: false
     lod:

@@ -1,5 +1,6 @@
 package pt.terrapi.terrapi_api.service.precision;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +35,17 @@ class PrecisionGenerationServiceTest {
     @InjectMocks
     private PrecisionGenerationService service;
 
+    @BeforeEach
+    void stubIdGeneration() {
+        when(generationRepository.save(any(PrecisionGeneration.class))).thenAnswer(inv -> {
+            PrecisionGeneration gen = inv.getArgument(0);
+            if (gen.getGenerationId() == null) {
+                gen.setGenerationId(UUID.randomUUID());
+            }
+            return gen;
+        });
+    }
+
     @Test
     void generate_success_returnsSuccessAndSavesAudit() {
         when(writer.write(any(UUID.class), isNull()))
@@ -42,7 +55,7 @@ class PrecisionGenerationServiceTest {
 
         assertThat(result.status()).isEqualTo(GenerationStatus.SUCCESS);
         assertThat(result.rowCount()).isEqualTo(10);
-        verify(generationRepository).save(any(PrecisionGeneration.class));
+        verify(generationRepository, times(2)).save(any(PrecisionGeneration.class));
     }
 
     @Test
@@ -56,7 +69,7 @@ class PrecisionGenerationServiceTest {
         assertThat(result.rowCount()).isEqualTo(0);
 
         ArgumentCaptor<PrecisionGeneration> captor = ArgumentCaptor.forClass(PrecisionGeneration.class);
-        verify(generationRepository).save(captor.capture());
+        verify(generationRepository, times(2)).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(GenerationStatus.FAILED);
     }
 

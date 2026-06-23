@@ -34,29 +34,28 @@ public class PrecisionGenerationService {
 
     public GenerationResult generate(Integer lod) {
         long t0 = System.currentTimeMillis();
-        UUID generationId = UUID.randomUUID();
+
+        PrecisionGeneration gen = new PrecisionGeneration();
+        gen.setStatus(GenerationStatus.RUNNING);
+        gen = generationRepository.save(gen);
+        UUID generationId = gen.getGenerationId();
 
         log.info("Generating precision (lod={}, genId={})", lod, generationId);
 
         try {
             WriteResult result = writer.write(generationId, lod);
-            saveAudit(generationId, GenerationStatus.SUCCESS, result);
+            gen.setStatus(GenerationStatus.SUCCESS);
+            gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
+                    result.totalUnits(), result.totalLods());
+            generationRepository.save(gen);
             log.info("Generation {} SUCCESS — {} rows in {} ms",
                     generationId, result.rowCount(), System.currentTimeMillis() - t0);
             return new GenerationResult(generationId, GenerationStatus.SUCCESS, result.rowCount());
         } catch (Exception e) {
             log.error("Generation {} FAILED (rolled back)", generationId, e);
-            saveAudit(generationId, GenerationStatus.FAILED, WriteResult.empty());
+            gen.setStatus(GenerationStatus.FAILED);
+            generationRepository.save(gen);
             return new GenerationResult(generationId, GenerationStatus.FAILED, 0);
         }
-    }
-
-    private void saveAudit(UUID generationId, GenerationStatus status, WriteResult result) {
-        PrecisionGeneration gen = new PrecisionGeneration();
-        gen.setGenerationId(generationId);
-        gen.setStatus(status);
-        gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
-                result.totalUnits(), result.totalLods());
-        generationRepository.save(gen);
     }
 }

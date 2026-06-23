@@ -5,12 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 
 import java.time.Instant;
@@ -24,6 +24,7 @@ import java.util.UUID;
 public class PrecisionGeneration {
 
     @Id
+    @UuidGenerator(style = UuidGenerator.Style.TIME)
     @Column(name = "generation_id")
     private UUID generationId;
 
@@ -49,13 +50,6 @@ public class PrecisionGeneration {
 
     @Column(name = "row_count")
     private int rowCount;
-
-    @PrePersist
-    void setDefaults() {
-        if (generationId == null) {
-            generationId = UUID.randomUUID();
-        }
-    }
 
     public void updateCounters(int rowCount, int nullGeometries, int invalidGeometries,
                                int totalUnits, int totalLods) {

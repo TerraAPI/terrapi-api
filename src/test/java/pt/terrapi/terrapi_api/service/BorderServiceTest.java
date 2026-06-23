@@ -7,26 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BorderServiceTest {
 
     @Test
-    void buildSql_noMaxLevel_selectsAllBorders() {
+    void buildSql_noMaxLevel_selectsByLod() {
         String sql = BorderService.buildSql(false);
-
-        assertThat(sql)
-                .contains("border_segments")
-                .doesNotContain("level <= ?");
-    }
-
-    @Test
-    void buildSql_maxLevel_addsLevelFilter() {
-        String sql = BorderService.buildSql(true);
-
-        assertThat(sql)
-                .contains("border_segments")
-                .contains("level <= ?");
-    }
-
-    @Test
-    void buildPrecisionSql_noMaxLevel_selectsByLod() {
-        String sql = BorderService.buildPrecisionSql(false);
 
         assertThat(sql)
                 .contains("border_segment_precisions")
@@ -35,8 +17,8 @@ class BorderServiceTest {
     }
 
     @Test
-    void buildPrecisionSql_maxLevel_addsLevelFilter() {
-        String sql = BorderService.buildPrecisionSql(true);
+    void buildSql_maxLevel_addsLevelFilter() {
+        String sql = BorderService.buildSql(true);
 
         assertThat(sql)
                 .contains("border_segment_precisions")

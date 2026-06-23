@@ -117,8 +117,9 @@ Two geometry-serving surfaces, fed from one nested topology:
   dissolution (see *Hierarchical nesting*). Used for selection and choropleth.
 - **`/api/v1/borders`** — the classified boundary-*line* network (CAOP `trocos`): each shared
   edge carries `level` (1 national … 5 parish), `lineType` (LAND/COAST/WATER) and `lengthKm`,
-  and is drawn once. Used for boundary overlays / styling. Served full-detail by default; pass
-  `?lod={0..2}` for the simplified tier (`border_segment_precisions`).
+  and is drawn once. Used for boundary overlays / styling. Always served from the simplified tier
+  (`border_segment_precisions`), `?lod={0..2}` (default `2`, coarsest) — like `/layers`, the
+  full-detail network is never dumped wholesale.
 
 Because layers are nested, a coarser layer's outline **is** the union of its children's edges, so
 fills across levels align exactly and a fill outline coincides with the corresponding border line.
@@ -143,4 +144,5 @@ Generation runs **inside** `PrecisionWriter.write`, in the same transaction and 
 invalidation key, and roll back together on an unhealthy result (border rows are folded into the
 validation counts). Because each arc is simplified independently (not coverage-derived), border
 lines *track* but do **not** byte-exactly coincide with the `ST_CoverageSimplify`'d layer fills at
-`lod > 0`. The full-detail `border_segments` remain the precise/no-`lod` surface.
+`lod > 0`. The full-detail `border_segments` are never served wholesale — like the original
+`geo_units.geometry`, they exist only for derivation (adjacency) and spatial-correctness queries.

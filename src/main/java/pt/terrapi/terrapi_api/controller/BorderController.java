@@ -30,14 +30,14 @@ public class BorderController {
 
     @GetMapping
     @Operation(summary = "Get administrative boundary lines as a GeoJSON FeatureCollection",
-            description = "Each feature carries its border order (level 1 = national/top .. 5 = parish), "
-                    + "line type (LAND/COAST/WATER) and length in km. Pass lod for simplified "
-                    + "geometry (0 = most detailed .. 2 = coarsest); omit lod for full detail.")
+            description = "Simplified geometry from the LOD ladder (0 = most detailed, 2 = coarsest). "
+                    + "Each feature carries its border order (level 1 = national/top .. 5 = parish), "
+                    + "line type (LAND/COAST/WATER) and length in km.")
     public ResponseEntity<String> getBorders(
             @Parameter(description = "Only return borders of this order or coarser (e.g. 3 = district+ borders)")
             @RequestParam(required = false) Integer maxLevel,
-            @Parameter(description = "Precision LOD level (0 = most detailed, 2 = coarsest); omit for full detail")
-            @RequestParam(required = false) Integer lod,
+            @Parameter(description = "Precision LOD level (0 = most detailed, 2 = coarsest)")
+            @RequestParam(defaultValue = "2") int lod,
             HttpServletRequest request) {
 
         String etag = borderService.getETag(maxLevel, lod);

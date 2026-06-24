@@ -23,7 +23,7 @@ public class PrecisionController {
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "Generate simplified geometries (rebuilds the whole nested hierarchy)")
+    @Operation(summary = "Generate simplified geometries for all unit types at the given LOD")
     public ResponseEntity<GenerationResult> generate(
             @Parameter(description = "LOD level to (re)generate; omit to generate all configured LODs")
             @RequestParam(required = false) Integer lod) {

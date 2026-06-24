@@ -13,7 +13,7 @@ public class PrecisionPolicyService {
 
     private final PrecisionProperties properties;
 
-    /** The LOD ladder (one tolerance per level) driving the nested hierarchy. */
+    /** The LOD ladder (one tolerance per level) applied per type independently. */
     public List<LodLevel> getLodLadder() {
         return properties.getLod();
     }

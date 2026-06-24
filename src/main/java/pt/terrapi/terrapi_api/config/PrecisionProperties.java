@@ -13,7 +13,7 @@ import java.util.List;
 @ConfigurationProperties("terrapi.precision")
 public class PrecisionProperties {
 
-    /** The single LOD ladder (one tolerance per level) driving the nested hierarchy. */
+    /** The LOD ladder (one tolerance per level) applied per type independently. */
     private List<LodLevel> lod;
     private Validation validation = new Validation();
 

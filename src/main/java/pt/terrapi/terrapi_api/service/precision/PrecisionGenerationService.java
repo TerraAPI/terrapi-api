@@ -12,9 +12,9 @@ import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 import java.util.UUID;
 
 /**
- * Orchestrates precision generation: delegates the atomic delete+insert+validate of the whole
- * nested hierarchy to {@link PrecisionWriter} (which rolls back on failure) and records the run in
- * {@code precision_generations} regardless of outcome.
+ * Orchestrates precision generation: delegates the atomic delete+insert+validate of
+ * per-layer precisions to {@link PrecisionWriter} (which rolls back on failure) and records
+ * the run in {@code precision_generations} regardless of outcome.
  */
 @Slf4j
 @Service

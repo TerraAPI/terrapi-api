@@ -51,7 +51,7 @@ class PrecisionWriterTest {
         when(properties.getValidation()).thenReturn(validation);
 
         // update arities: delete-all (0), delete-lod (1 int),
-        // dissolve (2 uuid), parish insert (int, int, uuid).
+        // type insert (int, int, uuid) x 7 types, borders (4 args).
         when(jdbcTemplate.update(anyString())).thenReturn(0);
         when(jdbcTemplate.update(anyString(), anyInt())).thenReturn(0);
         when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class))).thenReturn(1);
@@ -64,12 +64,12 @@ class PrecisionWriterTest {
     }
 
     private void stubValidation(int total, int nulls, int invalid, int empty) {
-        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(UUID.class)))
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any()))
                 .thenReturn(new ValidationResult(total, nulls, invalid, empty));
     }
 
     @Test
-    void write_buildsNestedHierarchy() {
+    void write_buildsPerLayerPrecisions() {
         stubLadder(new LodLevel(0, 25.0));
         stubValidation(100, 0, 0, 0);
 
@@ -78,8 +78,8 @@ class PrecisionWriterTest {
         assertThat(result.rowCount()).isEqualTo(100);
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), any(UUID.class), any(UUID.class));
-        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("ST_CoverageUnion"));
+        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), anyInt(), anyInt(), any(UUID.class));
+        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("ST_CoverageSimplify"));
     }
 
     @Test

@@ -11,27 +11,19 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
- * Transactional writer for {@code geo_unit_precisions}. Generation is hierarchical: the parish
- * coverage is coverage-simplified per LOD, then coarser layers are derived by dissolving the
- * already-simplified children ({@code ST_CoverageUnion}). All layers therefore share one edge
- * graph (parish ⊂ municipality ⊂ district; NUTS borders follow municipality borders). The CAOP
- * data is an authoritative, valid coverage; if it ever isn't, generation fails loudly and rolls
- * back rather than degrading.
+ * Transactional writer for {@code geo_unit_precisions}. Each {@link GeoUnitType} is
+ * coverage-simplified independently at each LOD from the source geometries in
+ * {@code geo_units}. All features of the same type form a valid coverage within their
+ * layer; edges are not shared across types. The CAOP data is an authoritative, valid
+ * coverage; if it ever isn't, generation fails loudly and rolls back rather than degrading.
  */
 @Slf4j
 @Service
 public class PrecisionWriter {
 
-    private static final int PARISH = GeoUnitType.PARISH.getValue();
-    private static final int MUNICIPALITY = GeoUnitType.MUNICIPALITY.getValue();
-    private static final int NUTS3 = GeoUnitType.NUTS3.getValue();
-    private static final int NUTS2 = GeoUnitType.NUTS2.getValue();
-    private static final int NUTS1 = GeoUnitType.NUTS1.getValue();
-
-    private static final String INSERT_PARISH_SQL = """
+    private static final String INSERT_TYPE_SQL = """
             WITH lods(lod, tolerance) AS (
                 VALUES %s
             ),
@@ -60,36 +52,6 @@ public class PrecisionWriter {
             SELECT code, ?, lod, ST_Transform(simplified_3763, 3857), tolerance,
                    ST_NPoints(simplified_3763), ?, NOW()
             FROM simplified
-            """;
-
-    /** Dissolve a source layer's precisions into a parent layer with a fixed target type. */
-    private static final String DISSOLVE_BY_COLUMN_SQL = """
-            INSERT INTO geo_unit_precisions
-                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count, generation_id, created_at)
-            SELECT code, %d, %d, geom, %.1f, ST_NPoints(geom), ?, NOW()
-            FROM (
-                SELECT %s AS code, ST_CoverageUnion(gp.geometry) AS geom
-                FROM geo_unit_precisions gp
-                JOIN geo_units u ON u.code = gp.geo_unit_code
-                WHERE gp.type = %d AND gp.lod = %d AND gp.generation_id = ?
-                  AND %s IS NOT NULL
-                GROUP BY %s
-            ) d
-            """;
-
-    /** Dissolve municipalities into their parent, taking the target type from the parent unit. */
-    private static final String DISSOLVE_TO_PARENT_TYPE_SQL = """
-            INSERT INTO geo_unit_precisions
-                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count, generation_id, created_at)
-            SELECT code, gtype, %d, geom, %.1f, ST_NPoints(geom), ?, NOW()
-            FROM (
-                SELECT d.code AS code, d.type AS gtype, ST_CoverageUnion(gp.geometry) AS geom
-                FROM geo_unit_precisions gp
-                JOIN geo_units u ON u.code = gp.geo_unit_code
-                JOIN geo_units d ON d.code = u.parent_code
-                WHERE gp.type = %d AND gp.lod = %d AND gp.generation_id = ?
-                GROUP BY d.code, d.type
-            ) x
             """;
 
     /**
@@ -154,8 +116,8 @@ public class PrecisionWriter {
     }
 
     /**
-     * Rebuilds the nested hierarchy for all LODs, or a single LOD when given, in one transaction.
-     * Throws {@link GenerationFailedException} on an unhealthy result, rolling back.
+     * Rebuilds precisions for all types at all LODs (or a single LOD when given) in one
+     * transaction. Throws {@link GenerationFailedException} on an unhealthy result, rolling back.
      */
     @Transactional
     public WriteResult write(UUID generationId, Integer lod) {
@@ -166,9 +128,9 @@ public class PrecisionWriter {
 
         deleteScope(lod);
         for (LodLevel level : ladder) {
-            buildHierarchy(level, generationId);
+            buildLayers(level, generationId);
         }
-        log.info("  Generated nested hierarchy for {} LOD level(s)", ladder.size());
+        log.info("  Generated per-layer precisions for {} LOD level(s)", ladder.size());
 
         ValidationResult validation = validate(generationId);
         int totalUnits = allUnitsCount();
@@ -185,15 +147,10 @@ public class PrecisionWriter {
                 totalUnits, totalLods);
     }
 
-    private void buildHierarchy(LodLevel level, UUID generationId) {
-        int lod = level.lod();
-        double t = level.tolerance();
-        insertParishBase(level, generationId);
-        dissolveByColumn(MUNICIPALITY, PARISH, lod, t, "u.parent_code", generationId);
-        dissolveToParentType(MUNICIPALITY, lod, t, generationId);
-        dissolveByColumn(NUTS3, MUNICIPALITY, lod, t, "u.nuts3_code", generationId);
-        dissolveByColumn(NUTS2, NUTS3, lod, t, "u.parent_code", generationId);
-        dissolveByColumn(NUTS1, NUTS2, lod, t, "u.parent_code", generationId);
+    private void buildLayers(LodLevel level, UUID generationId) {
+        for (GeoUnitType type : GeoUnitType.values()) {
+            buildLayer(level, generationId, type);
+        }
         insertBorderPrecisions(level, generationId);
     }
 
@@ -202,24 +159,11 @@ public class PrecisionWriter {
                 level.lod(), level.tolerance(), generationId, level.tolerance());
     }
 
-    private void insertParishBase(LodLevel level, UUID generationId) {
+    private void buildLayer(LodLevel level, UUID generationId, GeoUnitType type) {
         String valuesClause = String.format(Locale.US, "(%d, %.1f)", level.lod(), level.tolerance());
-        String sql = String.format(INSERT_PARISH_SQL, valuesClause,
+        String sql = String.format(INSERT_TYPE_SQL, valuesClause,
                 policyService.isSimplifyBoundary() ? "true" : "false");
-        jdbcTemplate.update(sql, PARISH, PARISH, generationId);
-    }
-
-    private void dissolveByColumn(int targetType, int sourceType, int lod, double tolerance,
-                                  String groupColumn, UUID generationId) {
-        String sql = String.format(Locale.US, DISSOLVE_BY_COLUMN_SQL,
-                targetType, lod, tolerance, groupColumn, sourceType, lod, groupColumn, groupColumn);
-        jdbcTemplate.update(sql, generationId, generationId);
-    }
-
-    private void dissolveToParentType(int sourceType, int lod, double tolerance, UUID generationId) {
-        String sql = String.format(Locale.US, DISSOLVE_TO_PARENT_TYPE_SQL,
-                lod, tolerance, sourceType, lod);
-        jdbcTemplate.update(sql, generationId, generationId);
+        jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
     }
 
     private List<LodLevel> ladderFor(Integer lod) {

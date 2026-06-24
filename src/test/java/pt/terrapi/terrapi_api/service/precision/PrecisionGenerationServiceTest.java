@@ -48,7 +48,7 @@ class PrecisionGenerationServiceTest {
 
     @Test
     void generate_success_returnsSuccessAndSavesAudit() {
-        when(writer.write(any(UUID.class), isNull()))
+        when(writer.write(any(UUID.class), isNull(), isNull()))
                 .thenReturn(new WriteResult(10, 0, 0, 5, 2));
 
         GenerationResult result = service.generate();
@@ -60,7 +60,7 @@ class PrecisionGenerationServiceTest {
 
     @Test
     void generate_writerThrows_returnsFailedAndSavesFailedAudit() {
-        when(writer.write(any(UUID.class), isNull()))
+        when(writer.write(any(UUID.class), isNull(), isNull()))
                 .thenThrow(new PrecisionWriter.GenerationFailedException("unhealthy"));
 
         GenerationResult result = service.generate();
@@ -75,21 +75,21 @@ class PrecisionGenerationServiceTest {
 
     @Test
     void generate_passesLodToWriter() {
-        when(writer.write(any(UUID.class), eq(2)))
+        when(writer.write(any(UUID.class), eq(2), isNull()))
                 .thenReturn(new WriteResult(3, 0, 0, 3, 1));
 
         service.generate(2);
 
-        verify(writer).write(any(UUID.class), eq(2));
+        verify(writer).write(any(UUID.class), eq(2), isNull());
     }
 
     @Test
     void generate_overload_usesNullLod() {
-        when(writer.write(any(UUID.class), isNull()))
+        when(writer.write(any(UUID.class), isNull(), isNull()))
                 .thenReturn(new WriteResult(1, 0, 0, 1, 1));
 
         service.generate();
 
-        verify(writer).write(any(UUID.class), isNull());
+        verify(writer).write(any(UUID.class), isNull(), isNull());
     }
 }

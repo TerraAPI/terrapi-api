@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
 @RestController
@@ -23,11 +24,13 @@ public class PrecisionController {
     }
 
     @PostMapping("/generate")
-    @Operation(summary = "Generate simplified geometries for all unit types at the given LOD")
+    @Operation(summary = "Generate simplified geometries for the given unit type and LOD level")
     public ResponseEntity<GenerationResult> generate(
             @Parameter(description = "LOD level to (re)generate; omit to generate all configured LODs")
-            @RequestParam(required = false) Integer lod) {
-        GenerationResult result = precisionGenerationService.generate(lod);
+            @RequestParam(required = false) Integer lod,
+            @Parameter(description = "Unit type to regenerate; omit to regenerate all types")
+            @RequestParam(required = false) GeoUnitType type) {
+        GenerationResult result = precisionGenerationService.generate(lod, type);
         return ResponseEntity.ok(result);
     }
 }

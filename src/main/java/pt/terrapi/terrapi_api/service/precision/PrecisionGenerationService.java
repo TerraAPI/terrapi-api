@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
@@ -25,10 +26,14 @@ public class PrecisionGenerationService {
     private final PrecisionGenerationRepository generationRepository;
 
     public GenerationResult generate() {
-        return generate(null);
+        return generate(null, null);
     }
 
     public GenerationResult generate(Integer lod) {
+        return generate(lod, null);
+    }
+
+    public GenerationResult generate(Integer lod, GeoUnitType type) {
         long t0 = System.currentTimeMillis();
 
         PrecisionGeneration gen = new PrecisionGeneration();
@@ -36,10 +41,10 @@ public class PrecisionGenerationService {
         gen = generationRepository.save(gen);
         UUID generationId = gen.getGenerationId();
 
-        log.info("Generating precision (lod={}, genId={})", lod, generationId);
+        log.info("Generating precision (lod={}, type={}, genId={})", lod, type, generationId);
 
         try {
-            WriteResult result = writer.write(generationId, lod);
+            WriteResult result = writer.write(generationId, lod, type);
             gen.setStatus(GenerationStatus.SUCCESS);
             gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                     result.totalUnits(), result.totalLods());

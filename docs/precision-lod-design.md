@@ -1,25 +1,35 @@
 # Precision (LOD) Design
 
-## The LOD ladder (0–2)
+## The LOD ladder (0–4)
 
-Each `GeoUnitType` is stored in `geo_unit_precisions` at three levels of detail:
+Each `GeoUnitType` has its own LOD ladder in `geo_unit_precisions`, with tolerances scaled
+to the type's typical feature size:
 
-- **LOD 0** — *most detailed*. A small, **non-zero** tolerance (just above the data's native
-  vertex spacing) so it is not a byte-for-byte duplicate of the original, yet visually
-  ~full-detail. This is what makes it worth storing: it lets the whole-layer ("grid") endpoint
-  serve a near-full-detail layer without ever shipping the multi-hundred-MB original.
-- **LOD 1** — simplified.
-- **LOD 2** — *coarsest*, the lightest payload (used as the grid's default).
-
-Tolerances are a **single ladder** configured under `terrapi.precision.lod` in `application.yaml`
-(one tolerance per LOD, driven by the parish base). They were chosen from the measured CAOP
-geometry scale (native vertex spacing ≈ 18–37 m on the mainland, ≈ 3–15 m on the islands, plus the
-smallest-feature sizes), so LOD 0 reduces vertex count meaningfully without distorting even the
-smallest parishes/islands.
+- **LOD 0** — tolerance just above native mainland vertex spacing for that type.
+- **LOD 1** — simplified (~2× LOD 0 tolerance).
+- **LOD 2** — *coarsest default*, the lightest payload used as the grid's default.
+- **LOD 3** — extra-coarse for zoomed-out overviews.
+- **LOD 4** — ultra-coarse for highest zoom levels.
 
 > LOD 0 must **never** be configured with tolerance `0`: `ST_SimplifyPreserveTopology(geom, 0)`
 > returns the original unchanged, re-creating an exact duplicate and the large payload it exists
 > to avoid.
+
+| Type | LOD 0 | LOD 1 | LOD 2 | LOD 3 | LOD 4 |
+|------|-------|-------|-------|-------|-------|
+| PARISH | 25 m | 50 m | 200 m | 500 m | 5,000 m |
+| MUNICIPALITY | 50 m | 100 m | 500 m | 1,000 m | 10,000 m |
+| DISTRICT | 100 m | 200 m | 1,000 m | 2,500 m | 20,000 m |
+| ISLAND | 50 m | 100 m | 500 m | 1,000 m | 10,000 m |
+| NUTS3 | 100 m | 200 m | 1,000 m | 2,500 m | 20,000 m |
+| NUTS2 | 200 m | 500 m | 2,000 m | 5,000 m | 25,000 m |
+| NUTS1 | 500 m | 1,000 m | 5,000 m | 10,000 m | 50,000 m |
+
+Tolerances were chosen from measured CAOP geometry scale: native vertex spacing ≈ 18–37 m on
+the mainland, ≈ 3–15 m on the islands, and the smallest-feature sizes (smallest parish: 20 ha,
+2 km perimeter; largest district: 1,026,332 ha). Each type's LOD 0 is just above native
+spacing; each successive LOD roughly doubles the tolerance; LOD 4 produces ~50–100 vertices
+for average features of that type.
 
 ## The original geometry
 
@@ -62,7 +72,9 @@ the previous precisions — rather than silently producing a lower-quality resul
 
 ### Configuration (`terrapi.precision`)
 
-- `lod` — the LOD ladder (one `{lod, tolerance}` per level), shared across all types.
+- `ladders` — per-type LOD ladders (keyed by lowercase `GeoUnitType` name: `parish`,
+  `municipality`, `district`, `island`, `nuts3`, `nuts2`, `nuts1`). Each type defines its own
+  `{lod, tolerance}` entries. All types share the same LOD indices (0–4) for API consistency.
 - `simplify-boundary` — passed to `ST_CoverageSimplify` (default `false`, keeps the outer
   coverage boundary crisp).
 - `validation` — `max-null-pct` / `max-invalid-pct` / `max-empty-pct` thresholds; a run
@@ -77,9 +89,13 @@ are lighter and better scaled to their feature size. The tradeoff: edges do not 
 across layers, and regenerating all types is required for a full refresh.
 
 Generation loops over all `GeoUnitType` values per LOD level: select features of that
-type from `geo_units`, apply `ST_CoverageSimplify`, and insert into
+type from `geo_units`, apply `ST_CoverageSimplify` at that type's tolerance, and insert into
 `geo_unit_precisions`. Border arcs are independently line-simplified in the same
-transaction.
+transaction, but only during full (all-types) generation runs.
+
+Generation can be scoped to a single type via the `?type` query parameter, e.g.
+`POST /api/v1/precision/generate?lod=2&type=PARISH`. When a type is specified, only that
+type's precisions are deleted and regenerated; borders are left untouched.
 
 ## Consumption: whole-layer selection grid
 
@@ -98,6 +114,15 @@ GET /api/v1/layers/{type}?lod={n}&parent={code}
   a municipality's parishes) for drill-down selection.
 - Responses are cached and ETag'd by the active `generation_id` (immutable per generation),
   the same invalidation key the precision pipeline produces.
+
+Precisions are generated via:
+```
+POST /api/v1/precision/generate?lod={n}&type={GEO_UNIT_TYPE}
+```
+- `lod` (optional) scopes to a single LOD level across all types.
+- `type` (optional) scopes to a single `GeoUnitType` (e.g. `PARISH`, `NUTS3`) — only that
+  type's precisions are deleted and regenerated; borders are untouched.
+- Omit both for a full regeneration of all types and borders.
 
 **Two-tier selection.** The grid ships *simplified* geometry (cheap, just for clicking and
 labelling). Once a unit is selected, its *precise* (full-detail original) boundary is fetched

@@ -82,9 +82,18 @@ public class PrecisionWriter {
     private static final String ALL_UNITS_COUNT_SQL =
             "SELECT COUNT(*) FROM geo_units WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)";
 
+    private static final String UNITS_COUNT_FOR_TYPE_SQL =
+            "SELECT COUNT(*) FROM geo_units WHERE type = ? AND geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)";
+
     private static final String DELETE_ALL_SQL = "DELETE FROM geo_unit_precisions";
 
     private static final String DELETE_LOD_SQL = "DELETE FROM geo_unit_precisions WHERE lod = ?";
+
+    private static final String DELETE_TYPE_ALL_SQL =
+            "DELETE FROM geo_unit_precisions WHERE type = ?";
+
+    private static final String DELETE_TYPE_LOD_SQL =
+            "DELETE FROM geo_unit_precisions WHERE type = ? AND lod = ?";
 
     private static final String DELETE_BORDER_ALL_SQL = "DELETE FROM border_segment_precisions";
 
@@ -116,25 +125,54 @@ public class PrecisionWriter {
     }
 
     /**
-     * Rebuilds precisions for all types at all LODs (or a single LOD when given) in one
-     * transaction. Throws {@link GenerationFailedException} on an unhealthy result, rolling back.
+     * Rebuilds precisions for the given type (or all types when {@code type} is null) at all
+     * LODs, or a single LOD when given, in one transaction. Border precisions are only regenerated
+     * during full (all-types) runs. Throws {@link GenerationFailedException} on an unhealthy
+     * result, rolling back.
      */
     @Transactional
-    public WriteResult write(UUID generationId, Integer lod) {
-        List<LodLevel> ladder = ladderFor(lod);
-        if (ladder.isEmpty()) {
+    public WriteResult write(UUID generationId, Integer lod, GeoUnitType type) {
+        List<GeoUnitType> types = (type != null)
+                ? List.of(type)
+                : List.of(GeoUnitType.values());
+
+        int totalLods = 0;
+        for (GeoUnitType t : types) {
+            List<LodLevel> ladder = ladderFor(lod, t);
+            if (ladder.isEmpty()) continue;
+            totalLods = Math.max(totalLods, ladder.size());
+        }
+        if (totalLods == 0) {
             return WriteResult.empty();
         }
 
-        deleteScope(lod);
-        for (LodLevel level : ladder) {
-            buildLayers(level, generationId);
+        if (type == null) {
+            deleteFullScope(lod);
         }
-        log.info("  Generated per-layer precisions for {} LOD level(s)", ladder.size());
+        for (GeoUnitType t : types) {
+            List<LodLevel> ladder = ladderFor(lod, t);
+            if (ladder.isEmpty()) continue;
+
+            if (type != null) {
+                deleteScope(lod, t);
+            }
+            for (LodLevel level : ladder) {
+                buildLayer(level, generationId, t);
+            }
+        }
+
+        if (type == null) {
+            List<LodLevel> parishLadder = ladderFor(lod, GeoUnitType.PARISH);
+            for (LodLevel level : parishLadder) {
+                insertBorderPrecisions(level, generationId);
+            }
+        }
+
+        log.info("  Generated precision for {} — {} LOD(s), type={}",
+                generationId, totalLods, type != null ? type.name() : "ALL");
 
         ValidationResult validation = validate(generationId);
-        int totalUnits = allUnitsCount();
-        int totalLods = ladder.size();
+        int totalUnits = (type != null) ? unitsCountForType(type) : allUnitsCount();
         if (!isHealthy(validation, totalUnits, totalLods)) {
             throw new GenerationFailedException(
                     "Generation " + generationId + " unhealthy — rows=" + validation.totalRows
@@ -145,13 +183,6 @@ public class PrecisionWriter {
 
         return new WriteResult(validation.totalRows, validation.nullCount, validation.invalidCount,
                 totalUnits, totalLods);
-    }
-
-    private void buildLayers(LodLevel level, UUID generationId) {
-        for (GeoUnitType type : GeoUnitType.values()) {
-            buildLayer(level, generationId, type);
-        }
-        insertBorderPrecisions(level, generationId);
     }
 
     private void insertBorderPrecisions(LodLevel level, UUID generationId) {
@@ -166,14 +197,14 @@ public class PrecisionWriter {
         jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
     }
 
-    private List<LodLevel> ladderFor(Integer lod) {
-        List<LodLevel> ladder = policyService.getLodLadder();
+    private List<LodLevel> ladderFor(Integer lod, GeoUnitType type) {
+        List<LodLevel> ladder = policyService.getLodLadder(type);
         if (ladder == null || ladder.isEmpty()) return List.of();
         if (lod == null) return ladder;
         return ladder.stream().filter(l -> l.lod() == lod).toList();
     }
 
-    private void deleteScope(Integer lod) {
+    private void deleteFullScope(Integer lod) {
         if (lod == null) {
             jdbcTemplate.update(DELETE_ALL_SQL);
             jdbcTemplate.update(DELETE_BORDER_ALL_SQL);
@@ -183,8 +214,21 @@ public class PrecisionWriter {
         }
     }
 
+    private void deleteScope(Integer lod, GeoUnitType type) {
+        if (lod == null) {
+            jdbcTemplate.update(DELETE_TYPE_ALL_SQL, type.getValue());
+        } else {
+            jdbcTemplate.update(DELETE_TYPE_LOD_SQL, type.getValue(), lod);
+        }
+    }
+
     private int allUnitsCount() {
         Long count = jdbcTemplate.queryForObject(ALL_UNITS_COUNT_SQL, Long.class);
+        return count != null ? count.intValue() : 0;
+    }
+
+    private int unitsCountForType(GeoUnitType type) {
+        Long count = jdbcTemplate.queryForObject(UNITS_COUNT_FOR_TYPE_SQL, Long.class, type.getValue());
         return count != null ? count.intValue() : 0;
     }
 

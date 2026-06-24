@@ -75,8 +75,9 @@ the previous precisions — rather than silently producing a lower-quality resul
 - `ladders` — per-type LOD ladders (keyed by lowercase `GeoUnitType` name: `parish`,
   `municipality`, `district`, `island`, `nuts3`, `nuts2`, `nuts1`). Each type defines its own
   `{lod, tolerance}` entries. All types share the same LOD indices (0–4) for API consistency.
-- `simplify-boundary` — passed to `ST_CoverageSimplify` (default `false`, keeps the outer
-  coverage boundary crisp).
+- `simplify-boundary` — passed to `ST_CoverageSimplify` (default `true`; when `false`, outer
+  coverage edges like coastlines retain full detail, making coastal polygons disproportionately
+  heavy).
 - `validation` — `max-null-pct` / `max-invalid-pct` / `max-empty-pct` thresholds; a run
   is healthy when it produced rows and stays within them.
 

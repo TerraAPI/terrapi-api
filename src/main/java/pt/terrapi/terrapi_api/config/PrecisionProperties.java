@@ -19,7 +19,7 @@ public class PrecisionProperties {
     private Map<String, List<LodLevel>> ladders = new HashMap<>();
     private Validation validation = new Validation();
 
-    private boolean simplifyBoundary = false;
+    private boolean simplifyBoundary = true;
 
     @Getter
     @Setter

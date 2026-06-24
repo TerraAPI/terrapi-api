@@ -32,7 +32,7 @@ terrapi:
     number-processes: 0
     log-progress-seconds: 10
   precision:
-    simplify-boundary: false
+    simplify-boundary: true
     ladders:
       parish:
         - {lod: 0, tolerance: 25}

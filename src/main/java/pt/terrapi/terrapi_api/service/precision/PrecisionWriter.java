@@ -11,7 +11,6 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Transactional writer for {@code geo_unit_precisions}. Each {@link GeoUnitType} is
@@ -24,43 +23,16 @@ import java.util.stream.Collectors;
 @Service
 public class PrecisionWriter {
 
-    /**
-     * Transform the source geometry to EPSG:3763 ONCE per generation into a session temp table,
-     * instead of re-transforming it inside every per-(type,LOD) insert. Scoped to the types being
-     * generated. {@code %s} is the {@code IN (...)} list of type values.
-     */
-    private static final String CREATE_TMP_GEO_SQL = """
-            CREATE TEMP TABLE tmp_geo_3763 ON COMMIT DROP AS
-            SELECT u.code, u.type,
-                   ST_Transform(
-                       CASE WHEN ST_SRID(u.geometry) = 0
-                            THEN ST_SetSRID(u.geometry, 4326)
-                            ELSE u.geometry END,
-                       3763) AS geom_3763
-            FROM geo_units u
-            WHERE u.geometry IS NOT NULL AND NOT ST_IsEmpty(u.geometry)
-              AND u.type IN (%s)
-            """;
-
-    /** Same one-time 3763 transform for the border arcs (full runs only). */
-    private static final String CREATE_TMP_BORDER_SQL = """
-            CREATE TEMP TABLE tmp_border_3763 ON COMMIT DROP AS
-            SELECT b.id, b.level, b.line_type, b.length_km,
-                   ST_Transform(
-                       CASE WHEN ST_SRID(b.geometry) = 0
-                            THEN ST_SetSRID(b.geometry, 4326)
-                            ELSE b.geometry END,
-                       3763) AS geom_3763
-            FROM border_segments b
-            WHERE b.geometry IS NOT NULL AND NOT ST_IsEmpty(b.geometry)
-            """;
-
     private static final String INSERT_TYPE_SQL = """
             WITH lods(lod, tolerance) AS (
                 VALUES %s
             ),
             base AS (
-                SELECT code, geom_3763 FROM tmp_geo_3763 WHERE type = ?
+                SELECT code, geometry_3763 AS geom_3763
+                FROM geo_units
+                WHERE type = ?
+                  AND geometry_3763 IS NOT NULL
+                  AND NOT ST_IsEmpty(geometry_3763)
             ),
             simplified AS (
                 SELECT b.code, l.lod, l.tolerance,
@@ -90,8 +62,9 @@ public class PrecisionWriter {
                    ?, ST_NPoints(simplified_3763), ?, NOW()
             FROM (
                 SELECT b.id, b.level, b.line_type, b.length_km,
-                       ST_SimplifyPreserveTopology(b.geom_3763, ?) AS simplified_3763
-                FROM tmp_border_3763 b
+                       ST_SimplifyPreserveTopology(b.geometry_3763, ?) AS simplified_3763
+                FROM border_segments b
+                WHERE b.geometry_3763 IS NOT NULL AND NOT ST_IsEmpty(b.geometry_3763)
             ) s
             WHERE simplified_3763 IS NOT NULL AND NOT ST_IsEmpty(simplified_3763)
             """;
@@ -170,8 +143,6 @@ public class PrecisionWriter {
                 generationId, types.size(), totalLods,
                 type != null ? type.name() : "ALL types");
 
-        materializeSourceGeometry(types, type == null);
-
         for (GeoUnitType t : types) {
             List<LodLevel> ladder = ladderFor(lod, t);
             if (ladder.isEmpty()) continue;
@@ -229,34 +200,6 @@ public class PrecisionWriter {
     private int insertBorderPrecisions(LodLevel level, UUID generationId) {
         return jdbcTemplate.update(INSERT_BORDER_SQL,
                 level.lod(), level.tolerance(), generationId, level.tolerance());
-    }
-
-    /**
-     * Transforms the source geometry (and, on full runs, the border arcs) to EPSG:3763 ONCE per
-     * generation into session temp tables, so each per-(type,LOD) insert reads pre-transformed
-     * geometry instead of re-running ST_Transform over the whole source for every LOD.
-     */
-    private void materializeSourceGeometry(List<GeoUnitType> types, boolean includeBorders) {
-        String typeIn = types.stream()
-                .map(t -> Integer.toString(t.getValue()))
-                .collect(Collectors.joining(","));
-        long t0 = System.currentTimeMillis();
-        jdbcTemplate.execute("DROP TABLE IF EXISTS tmp_geo_3763");
-        jdbcTemplate.execute(String.format(CREATE_TMP_GEO_SQL, typeIn));
-        jdbcTemplate.execute("CREATE INDEX ON tmp_geo_3763 (type)");
-        Integer geoCount = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM tmp_geo_3763", Integer.class);
-        log.info("  Transformed {} source geometries to 3763 in {} ms",
-                geoCount, System.currentTimeMillis() - t0);
-        if (includeBorders) {
-            long tb = System.currentTimeMillis();
-            jdbcTemplate.execute("DROP TABLE IF EXISTS tmp_border_3763");
-            jdbcTemplate.execute(CREATE_TMP_BORDER_SQL);
-            Integer borderCount = jdbcTemplate.queryForObject(
-                    "SELECT count(*) FROM tmp_border_3763", Integer.class);
-            log.info("  Transformed {} border arcs to 3763 in {} ms",
-                    borderCount, System.currentTimeMillis() - tb);
-        }
     }
 
     private int buildLayer(LodLevel level, UUID generationId, GeoUnitType type) {

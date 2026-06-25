@@ -32,6 +32,10 @@ public class BorderSegment {
     @Column(columnDefinition = "geometry(Geometry, 4326)")
     private Geometry geometry;
 
+    /** {@link #geometry} pre-transformed to EPSG:3763, populated at import (used by precision gen). */
+    @Column(name = "geometry_3763", columnDefinition = "geometry(Geometry, 3763)")
+    private Geometry geometry3763;
+
     /** Administrative order of the border: 1 (national/top) .. 5 (parish-level). */
     @Column(name = "level")
     private Integer level;

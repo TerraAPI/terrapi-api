@@ -30,6 +30,13 @@ public class GeoUnit {
     @Column(columnDefinition = "geometry(Geometry, 4326)")
     private Geometry geometry;
 
+    /**
+     * {@link #geometry} pre-transformed to EPSG:3763 (metre CRS), populated once at import.
+     * Precision generation simplifies from this directly, avoiding a per-generation reprojection.
+     */
+    @Column(name = "geometry_3763", columnDefinition = "geometry(Geometry, 3763)")
+    private Geometry geometry3763;
+
     private Double areaHa;
 
     private Double perimeterKm;

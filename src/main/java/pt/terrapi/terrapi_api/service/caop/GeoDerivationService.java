@@ -17,9 +17,26 @@ public class GeoDerivationService {
     private final JdbcTemplate jdbcTemplate;
 
     public void deriveAll() {
+        computeProjectedGeometry();
         updateRepresentativePoints();
         buildAdjacency();
         computeCoastline();
+    }
+
+    /**
+     * Pre-transforms the 4326 source geometry to EPSG:3763 once per import, so precision
+     * generation simplifies straight from {@code geometry_3763} without re-projecting every run.
+     */
+    void computeProjectedGeometry() {
+        long t0 = System.currentTimeMillis();
+        int units = jdbcTemplate.update(
+                "UPDATE geo_units SET geometry_3763 = ST_Transform(geometry, 3763) "
+                        + "WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)");
+        int borders = jdbcTemplate.update(
+                "UPDATE border_segments SET geometry_3763 = ST_Transform(geometry, 3763) "
+                        + "WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)");
+        log.info("  Projected to 3763: {} units, {} borders in {} ms",
+                units, borders, System.currentTimeMillis() - t0);
     }
 
     void updateRepresentativePoints() {

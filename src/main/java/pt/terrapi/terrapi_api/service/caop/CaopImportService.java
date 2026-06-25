@@ -55,10 +55,13 @@ public class CaopImportService {
         }
 
         log.info("Importing {} .gpkg files from {}", files.length, folderPath);
+        // Full rebuild: start from an empty table so that entities split across files
+        // (the Azores NUTS levels) merge cleanly and scalar sums never double-count.
         writer.clearAuxData();
+        writer.clearGeoUnits();
         ImportResult total = ImportResult.empty();
         for (File file : files) {
-            total = total.add(importFile(file.getAbsolutePath()));
+            total = total.add(importFile(file.getAbsolutePath(), true));
         }
         log.info("Import finished — {}", total.counts());
 
@@ -68,18 +71,19 @@ public class CaopImportService {
 
     @Transactional
     public ImportResult importGpkg(String filePath) {
+        // Incremental single-file import: replace conflicting codes, leave other regions intact.
         writer.clearAuxData();
-        ImportResult result = importFile(filePath);
+        ImportResult result = importFile(filePath, false);
         log.info("Import finished — {}", result.counts());
 
         finalizeImport();
         return result;
     }
 
-    private ImportResult importFile(String filePath) {
+    private ImportResult importFile(String filePath, boolean merge) {
         long t0 = System.currentTimeMillis();
         GpkgData data = reader.read(filePath);
-        writer.upsertGeoUnits(data.units(), data.sourceEpsg());
+        writer.upsertGeoUnits(data.units(), data.sourceEpsg(), merge);
         writer.insertBorderSegments(data.borders(), data.sourceEpsg());
         ImportResult result = countByType(data);
         log.info("  Imported {} units, {} borders in {} ms",

@@ -13,6 +13,22 @@ public final class RowMappers {
 
     private static final WKBReader WKB_READER = new WKBReader();
 
+    /**
+     * Prefix applied to the statistical (NUTS) code namespace. CAOP's raw NUTS {@code codigo}
+     * values (e.g. {@code 11}, {@code 15}) collide with administrative district {@code dt}
+     * codes (Lisboa {@code 11}, Setúbal {@code 15}) in the single global {@code geo_units.code}
+     * primary key. Prefixing NUTS codes with {@code PT} (the Eurostat NUTS root for Portugal)
+     * makes them globally unique without overlapping any all-numeric administrative code.
+     * The same prefix is applied to {@code nuts3_code} on municipalities/parishes so the
+     * {@code nuts3_code = code} join to NUTS3 units is preserved.
+     */
+    public static final String STAT_CODE_PREFIX = "PT";
+
+    /** Namespaces a raw NUTS code (null-safe). */
+    public static String nutsCode(String rawCodigo) {
+        return rawCodigo == null ? null : STAT_CODE_PREFIX + rawCodigo;
+    }
+
     private RowMappers() {}
 
     public static BorderSegment mapBorderSegment(ResultSet rs) throws SQLException {
@@ -138,7 +154,7 @@ public final class RowMappers {
             u.setCode(rs.getString("dtmn"));
             u.setName(rs.getString("municipio"));
             u.setParent(districtByName.get(rs.getString("distrito_ilha")));
-            u.setNuts3Code(rs.getString("nuts3_cod"));
+            u.setNuts3Code(nutsCode(rs.getString("nuts3_cod")));
             u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);
             return u;
@@ -152,7 +168,7 @@ public final class RowMappers {
             u.setName(rs.getString("freguesia"));
             u.setParent(municipalityByName.get(rs.getString("municipio")));
             u.setSimplifiedName(rs.getString("designacao_simplificada"));
-            u.setNuts3Code(rs.getString("nuts3_cod"));
+            u.setNuts3Code(nutsCode(rs.getString("nuts3_cod")));
             setGeo(u, rs);
             return u;
         }
@@ -160,7 +176,7 @@ public final class RowMappers {
         public static GeoUnit mapRowNuts1(ResultSet rs) throws SQLException {
             GeoUnit u = new GeoUnit();
             u.setType(GeoUnitType.NUTS1);
-            u.setCode(rs.getString("codigo"));
+            u.setCode(nutsCode(rs.getString("codigo")));
             u.setName(rs.getString("nuts1"));
             u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
             u.setParishCount(nullableInt(rs, "n_freguesias"));
@@ -172,7 +188,7 @@ public final class RowMappers {
                 Map<String, GeoUnit> nuts1ByName) throws SQLException {
             GeoUnit u = new GeoUnit();
             u.setType(GeoUnitType.NUTS2);
-            u.setCode(rs.getString("codigo"));
+            u.setCode(nutsCode(rs.getString("codigo")));
             u.setName(rs.getString("nuts2"));
             u.setParent(nuts1ByName.get(rs.getString("nuts1")));
             u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
@@ -185,7 +201,7 @@ public final class RowMappers {
                 Map<String, GeoUnit> nuts2ByName) throws SQLException {
             GeoUnit u = new GeoUnit();
             u.setType(GeoUnitType.NUTS3);
-            u.setCode(rs.getString("codigo"));
+            u.setCode(nutsCode(rs.getString("codigo")));
             u.setName(rs.getString("nuts3"));
             u.setParent(nuts2ByName.get(rs.getString("nuts2")));
             u.setMunicipalityCount(nullableInt(rs, "n_municipios"));

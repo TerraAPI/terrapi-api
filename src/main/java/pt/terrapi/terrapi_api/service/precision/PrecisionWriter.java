@@ -128,7 +128,7 @@ public class PrecisionWriter {
 
         int totalLods = 0;
         for (GeoUnitType t : types) {
-            List<LodLevel> ladder = ladderFor(lod, t);
+            List<LodLevel> ladder = ladderFor(lod);
             if (ladder.isEmpty()) continue;
             totalLods = Math.max(totalLods, ladder.size());
         }
@@ -144,7 +144,7 @@ public class PrecisionWriter {
                 type != null ? type.name() : "ALL types");
 
         for (GeoUnitType t : types) {
-            List<LodLevel> ladder = ladderFor(lod, t);
+            List<LodLevel> ladder = ladderFor(lod);
             if (ladder.isEmpty()) continue;
 
             if (type != null) {
@@ -165,10 +165,10 @@ public class PrecisionWriter {
         }
 
         if (type == null) {
-            List<LodLevel> parishLadder = ladderFor(lod, GeoUnitType.PARISH);
+            List<LodLevel> ladder = ladderFor(lod);
             long borderStart = System.currentTimeMillis();
             int borderRows = 0;
-            for (LodLevel level : parishLadder) {
+            for (LodLevel level : ladder) {
                 long t0 = System.currentTimeMillis();
                 int rows = insertBorderPrecisions(level, generationId);
                 borderRows += rows;
@@ -177,7 +177,7 @@ public class PrecisionWriter {
                         System.currentTimeMillis() - t0);
             }
             log.info("  borders done: {} rows over {} LOD(s) in {} ms",
-                    borderRows, parishLadder.size(), System.currentTimeMillis() - borderStart);
+                    borderRows, ladder.size(), System.currentTimeMillis() - borderStart);
         }
 
         log.info("  Generated precision for {} — {} LOD(s), scope={}",
@@ -213,8 +213,8 @@ public class PrecisionWriter {
         return String.format(Locale.US, "%.0f", tolerance);
     }
 
-    private List<LodLevel> ladderFor(Integer lod, GeoUnitType type) {
-        List<LodLevel> ladder = policyService.getLodLadder(type);
+    private List<LodLevel> ladderFor(Integer lod) {
+        List<LodLevel> ladder = policyService.getLodLadder();
         if (ladder == null || ladder.isEmpty()) return List.of();
         if (lod == null) return ladder;
         return ladder.stream().filter(l -> l.lod() == lod).toList();

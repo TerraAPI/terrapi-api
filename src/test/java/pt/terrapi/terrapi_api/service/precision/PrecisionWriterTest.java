@@ -64,7 +64,7 @@ class PrecisionWriterTest {
     }
 
     private void stubLadder(LodLevel... levels) {
-        when(policyService.getLodLadder(any(GeoUnitType.class))).thenReturn(List.of(levels));
+        when(policyService.getLodLadder()).thenReturn(List.of(levels));
     }
 
     private void stubValidation(int total, int nulls, int invalid, int empty) {
@@ -109,7 +109,7 @@ class PrecisionWriterTest {
 
     @Test
     void write_emptyLadder_returnsEmpty() {
-        when(policyService.getLodLadder(any(GeoUnitType.class))).thenReturn(List.of());
+        when(policyService.getLodLadder()).thenReturn(List.of());
 
         WriteResult result = writer.write(UUID.randomUUID(), null, null);
 

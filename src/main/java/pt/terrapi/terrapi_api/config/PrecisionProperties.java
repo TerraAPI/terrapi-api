@@ -5,9 +5,8 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -15,8 +14,8 @@ import java.util.Map;
 @ConfigurationProperties("terrapi.precision")
 public class PrecisionProperties {
 
-    /** Per-type LOD ladders (keyed by lowercase GeoUnitType name, e.g. "parish"). */
-    private Map<String, List<LodLevel>> ladders = new HashMap<>();
+    /** Single LOD ladder shared by all {@code GeoUnitType}s (EPSG:3763 metre tolerances). */
+    private List<LodLevel> ladder = new ArrayList<>();
     private Validation validation = new Validation();
 
     private boolean simplifyBoundary = true;

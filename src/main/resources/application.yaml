@@ -38,35 +38,10 @@ terrapi:
     log-progress-seconds: 10
   precision:
     simplify-boundary: true
-    ladders:
-      parish:
-        - {lod: 0, tolerance: 25}
-        - {lod: 1, tolerance: 50}
-        - {lod: 2, tolerance: 200}
-      municipality:
-        - {lod: 0, tolerance: 50}
-        - {lod: 1, tolerance: 100}
-        - {lod: 2, tolerance: 500}
-      district:
-        - {lod: 0, tolerance: 100}
-        - {lod: 1, tolerance: 200}
-        - {lod: 2, tolerance: 1000}
-      island:
-        - {lod: 0, tolerance: 50}
-        - {lod: 1, tolerance: 100}
-        - {lod: 2, tolerance: 500}
-      nuts3:
-        - {lod: 0, tolerance: 100}
-        - {lod: 1, tolerance: 200}
-        - {lod: 2, tolerance: 1000}
-      nuts2:
-        - {lod: 0, tolerance: 200}
-        - {lod: 1, tolerance: 500}
-        - {lod: 2, tolerance: 2000}
-      nuts1:
-        - {lod: 0, tolerance: 500}
-        - {lod: 1, tolerance: 1000}
-        - {lod: 2, tolerance: 5000}
+    ladder:
+      - {lod: 0, tolerance: 25}
+      - {lod: 1, tolerance: 50}
+      - {lod: 2, tolerance: 200}
     validation:
       max-null-pct: 0.5
       max-invalid-pct: 25.0

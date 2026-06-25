@@ -149,6 +149,10 @@ public class PrecisionWriter {
         if (type == null) {
             deleteFullScope(lod);
         }
+        log.info("Precision {}: simplifying {} type(s) at up to {} LOD(s) (scope={})",
+                generationId, types.size(), totalLods,
+                type != null ? type.name() : "ALL types");
+
         for (GeoUnitType t : types) {
             List<LodLevel> ladder = ladderFor(lod, t);
             if (ladder.isEmpty()) continue;
@@ -156,19 +160,37 @@ public class PrecisionWriter {
             if (type != null) {
                 deleteScope(lod, t);
             }
+            long typeStart = System.currentTimeMillis();
+            int typeRows = 0;
             for (LodLevel level : ladder) {
-                buildLayer(level, generationId, t);
+                long t0 = System.currentTimeMillis();
+                int rows = buildLayer(level, generationId, t);
+                typeRows += rows;
+                log.info("    {} LOD {} @ {} m -> {} rows in {} ms",
+                        t.name(), level.lod(), fmtTol(level.tolerance()), rows,
+                        System.currentTimeMillis() - t0);
             }
+            log.info("  {} done: {} rows over {} LOD(s) in {} ms",
+                    t.name(), typeRows, ladder.size(), System.currentTimeMillis() - typeStart);
         }
 
         if (type == null) {
             List<LodLevel> parishLadder = ladderFor(lod, GeoUnitType.PARISH);
+            long borderStart = System.currentTimeMillis();
+            int borderRows = 0;
             for (LodLevel level : parishLadder) {
-                insertBorderPrecisions(level, generationId);
+                long t0 = System.currentTimeMillis();
+                int rows = insertBorderPrecisions(level, generationId);
+                borderRows += rows;
+                log.info("    borders LOD {} @ {} m -> {} rows in {} ms",
+                        level.lod(), fmtTol(level.tolerance()), rows,
+                        System.currentTimeMillis() - t0);
             }
+            log.info("  borders done: {} rows over {} LOD(s) in {} ms",
+                    borderRows, parishLadder.size(), System.currentTimeMillis() - borderStart);
         }
 
-        log.info("  Generated precision for {} — {} LOD(s), type={}",
+        log.info("  Generated precision for {} — {} LOD(s), scope={}",
                 generationId, totalLods, type != null ? type.name() : "ALL");
 
         ValidationResult validation = validate(generationId);
@@ -185,16 +207,20 @@ public class PrecisionWriter {
                 totalUnits, totalLods);
     }
 
-    private void insertBorderPrecisions(LodLevel level, UUID generationId) {
-        jdbcTemplate.update(INSERT_BORDER_SQL,
+    private int insertBorderPrecisions(LodLevel level, UUID generationId) {
+        return jdbcTemplate.update(INSERT_BORDER_SQL,
                 level.lod(), level.tolerance(), generationId, level.tolerance());
     }
 
-    private void buildLayer(LodLevel level, UUID generationId, GeoUnitType type) {
+    private int buildLayer(LodLevel level, UUID generationId, GeoUnitType type) {
         String valuesClause = String.format(Locale.US, "(%d, %.1f)", level.lod(), level.tolerance());
         String sql = String.format(INSERT_TYPE_SQL, valuesClause,
                 policyService.isSimplifyBoundary() ? "true" : "false");
-        jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
+        return jdbcTemplate.update(sql, type.getValue(), type.getValue(), generationId);
+    }
+
+    private static String fmtTol(double tolerance) {
+        return String.format(Locale.US, "%.0f", tolerance);
     }
 
     private List<LodLevel> ladderFor(Integer lod, GeoUnitType type) {

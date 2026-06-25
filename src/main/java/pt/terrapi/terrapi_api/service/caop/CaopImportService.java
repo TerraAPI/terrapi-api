@@ -19,7 +19,6 @@ import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
 import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.enums.SourceDataset;
 import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
@@ -68,7 +67,7 @@ public class CaopImportService {
         writer.clearGeoUnits();
         Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
         for (File file : files) {
-            importFile(file.getAbsolutePath(), true, codesByType);
+            importFile(file.getAbsolutePath(), codesByType);
         }
         ImportResult result = distinctResult(codesByType);
         log.info("Import finished — {}", result.counts());
@@ -77,48 +76,16 @@ public class CaopImportService {
         return result;
     }
 
-    @Transactional
-    public ImportResult importGpkg(String filePath) {
-        // Incremental single-file import: replace conflicting codes, leave other regions intact.
-        writer.clearAuxData();
-        Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
-        importFile(filePath, false, codesByType);
-        ImportResult result = distinctResult(codesByType);
-        log.info("Import finished — {}", result.counts());
-
-        finalizeImport(codesByType);
-        return result;
-    }
-
-    private void importFile(String filePath, boolean merge,
-                            Map<GeoUnitType, Set<String>> codesByType) {
+    private void importFile(String filePath, Map<GeoUnitType, Set<String>> codesByType) {
         long t0 = System.currentTimeMillis();
         GpkgData data = reader.read(filePath);
-        warnIfPartialRegion(data.sourceEpsg(), merge);
-        writer.upsertGeoUnits(data.units(), data.sourceEpsg(), merge);
+        writer.upsertGeoUnits(data.units(), data.sourceEpsg());
         writer.insertBorderSegments(data.borders(), data.sourceEpsg());
         for (GeoUnit u : data.units()) {
             codesByType.computeIfAbsent(u.getType(), k -> new HashSet<>()).add(u.getCode());
         }
         log.info("  Imported {} units, {} borders in {} ms",
                 data.units().size(), data.borders().size(), System.currentTimeMillis() - t0);
-    }
-
-    /**
-     * The Azores NUTS levels span BOTH Azores GeoPackages, so a single-file import of one island
-     * group yields a partial Açores NUTS. Warn loudly so the partial result isn't mistaken for
-     * complete; the folder import reassembles the full archipelago.
-     */
-    private static void warnIfPartialRegion(int sourceEpsg, boolean merge) {
-        if (merge) {
-            return;
-        }
-        if (sourceEpsg == SourceDataset.AZORES_WEST.getSourceEpsg()
-                || sourceEpsg == SourceDataset.AZORES_EAST.getSourceEpsg()) {
-            log.warn("Single-file import of an Azores island group (EPSG:{}): its NUTS levels span "
-                    + "both Azores GeoPackages, so the Açores NUTS geometry will be PARTIAL. Use the "
-                    + "folder import to assemble the full archipelago.", sourceEpsg);
-        }
     }
 
     /**

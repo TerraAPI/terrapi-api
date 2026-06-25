@@ -19,42 +19,21 @@ public class GeoUnitWriter {
 
     private static final WKBWriter WKB_WRITER = new WKBWriter();
 
-    private static final String INSERT_GEO_UNIT_VALUES = """
+    /**
+     * Upsert used by the full rebuild: a conflicting code <em>unions</em> the geometries and
+     * <em>sums</em> the disjoint scalar attributes, so an entity split across files — the Azores
+     * NUTS levels, whose {@code codigo} appears (partially) in both the Western and the
+     * Central+Eastern GeoPackages — is reassembled into one complete unit instead of one half
+     * silently overwriting the other. Idempotent for geometry ({@code ST_Union} of a fragment
+     * already contained is a no-op); the rebuild starts from an empty table
+     * ({@link #clearGeoUnits()}), so the scalar sums never double-count.
+     */
+    private static final String UPSERT_GEO_UNIT_SQL = """
             INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
                                    type, parent_code, simplified_name, nuts3_code,
                                    municipality_count, parish_count)
             VALUES (?, ?, ST_Transform(ST_GeomFromWKB(?, ?), 4326),
                     ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
-
-    /**
-     * Replace-mode upsert: a conflicting code overwrites the existing row. Used by the
-     * incremental single-file import, where every code is written at most once per file.
-     */
-    private static final String UPSERT_GEO_UNIT_REPLACE_SQL = INSERT_GEO_UNIT_VALUES + """
-            ON CONFLICT (code) DO UPDATE SET
-                name = EXCLUDED.name,
-                geometry = EXCLUDED.geometry,
-                area_ha = EXCLUDED.area_ha,
-                perimeter_km = EXCLUDED.perimeter_km,
-                type = EXCLUDED.type,
-                parent_code = EXCLUDED.parent_code,
-                simplified_name = EXCLUDED.simplified_name,
-                nuts3_code = EXCLUDED.nuts3_code,
-                municipality_count = EXCLUDED.municipality_count,
-                parish_count = EXCLUDED.parish_count
-            """;
-
-    /**
-     * Merge-mode upsert: a conflicting code <em>unions</em> the geometries and <em>sums</em>
-     * the disjoint scalar attributes. Used by the full-folder rebuild so that an entity split
-     * across files — the Azores NUTS levels, whose {@code codigo} appears (partially) in both
-     * the Western and the Central+Eastern GeoPackages — is reassembled into one complete unit
-     * instead of one half silently overwriting the other. Idempotent for geometry
-     * ({@code ST_Union} of a fragment already contained is a no-op); the full rebuild starts
-     * from an empty table ({@link #clearGeoUnits()}), so the scalar sums never double-count.
-     */
-    private static final String UPSERT_GEO_UNIT_MERGE_SQL = INSERT_GEO_UNIT_VALUES + """
             ON CONFLICT (code) DO UPDATE SET
                 name = EXCLUDED.name,
                 geometry = CASE
@@ -99,16 +78,13 @@ public class GeoUnitWriter {
     }
 
     /**
-     * Upserts units transformed from {@code sourceEpsg} to EPSG:4326.
-     *
-     * @param merge when {@code true}, conflicting codes union geometry and sum scalars
-     *              (full rebuild — reassembles file-split entities such as the Azores NUTS);
-     *              when {@code false}, conflicting codes are replaced (incremental single-file).
+     * Upserts units transformed from {@code sourceEpsg} to EPSG:4326. Conflicting codes union
+     * geometry and sum scalars (see {@link #UPSERT_GEO_UNIT_SQL}), so entities split across files
+     * (the Azores NUTS) are reassembled; the rebuild clears the table first so sums don't repeat.
      */
-    public void upsertGeoUnits(List<GeoUnit> units, int sourceEpsg, boolean merge) {
+    public void upsertGeoUnits(List<GeoUnit> units, int sourceEpsg) {
         if (units.isEmpty()) return;
-        String sql = merge ? UPSERT_GEO_UNIT_MERGE_SQL : UPSERT_GEO_UNIT_REPLACE_SQL;
-        jdbcTemplate.batchUpdate(sql, units, 50, (ps, u) -> {
+        jdbcTemplate.batchUpdate(UPSERT_GEO_UNIT_SQL, units, 50, (ps, u) -> {
             ps.setString(1, u.getCode());
             ps.setString(2, u.getName());
             setWkb(ps, 3, u.getGeometry() != null ? WKB_WRITER.write(u.getGeometry()) : null);

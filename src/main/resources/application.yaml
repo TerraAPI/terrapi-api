@@ -1,6 +1,11 @@
 spring:
   application:
     name: terrapi-api
+  servlet:
+    multipart:
+      # CAOP upload sends all .gpkg files in one request; Continente alone is ~180 MB.
+      max-file-size: 500MB
+      max-request-size: 1GB
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5445/terrapi}
     username: ${DB_USERNAME:terrapi}

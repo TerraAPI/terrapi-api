@@ -14,9 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.terrapi_api.enums.SourceDataset;
 import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
@@ -63,15 +66,15 @@ public class CaopImportService {
         // (the Azores NUTS levels) merge cleanly and scalar sums never double-count.
         writer.clearAuxData();
         writer.clearGeoUnits();
-        ImportResult total = ImportResult.empty();
         Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
         for (File file : files) {
-            total = total.add(importFile(file.getAbsolutePath(), true, codesByType));
+            importFile(file.getAbsolutePath(), true, codesByType);
         }
-        log.info("Import finished — {}", total.counts());
+        ImportResult result = distinctResult(codesByType);
+        log.info("Import finished — {}", result.counts());
 
         finalizeImport(codesByType);
-        return total;
+        return result;
     }
 
     @Transactional
@@ -79,26 +82,43 @@ public class CaopImportService {
         // Incremental single-file import: replace conflicting codes, leave other regions intact.
         writer.clearAuxData();
         Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
-        ImportResult result = importFile(filePath, false, codesByType);
+        importFile(filePath, false, codesByType);
+        ImportResult result = distinctResult(codesByType);
         log.info("Import finished — {}", result.counts());
 
         finalizeImport(codesByType);
         return result;
     }
 
-    private ImportResult importFile(String filePath, boolean merge,
-                                    Map<GeoUnitType, Set<String>> codesByType) {
+    private void importFile(String filePath, boolean merge,
+                            Map<GeoUnitType, Set<String>> codesByType) {
         long t0 = System.currentTimeMillis();
         GpkgData data = reader.read(filePath);
+        warnIfPartialRegion(data.sourceEpsg(), merge);
         writer.upsertGeoUnits(data.units(), data.sourceEpsg(), merge);
         writer.insertBorderSegments(data.borders(), data.sourceEpsg());
         for (GeoUnit u : data.units()) {
             codesByType.computeIfAbsent(u.getType(), k -> new HashSet<>()).add(u.getCode());
         }
-        ImportResult result = countByType(data);
         log.info("  Imported {} units, {} borders in {} ms",
-                result.total(), data.borders().size(), System.currentTimeMillis() - t0);
-        return result;
+                data.units().size(), data.borders().size(), System.currentTimeMillis() - t0);
+    }
+
+    /**
+     * The Azores NUTS levels span BOTH Azores GeoPackages, so a single-file import of one island
+     * group yields a partial Açores NUTS. Warn loudly so the partial result isn't mistaken for
+     * complete; the folder import reassembles the full archipelago.
+     */
+    private static void warnIfPartialRegion(int sourceEpsg, boolean merge) {
+        if (merge) {
+            return;
+        }
+        if (sourceEpsg == SourceDataset.AZORES_WEST.getSourceEpsg()
+                || sourceEpsg == SourceDataset.AZORES_EAST.getSourceEpsg()) {
+            log.warn("Single-file import of an Azores island group (EPSG:{}): its NUTS levels span "
+                    + "both Azores GeoPackages, so the Açores NUTS geometry will be PARTIAL. Use the "
+                    + "folder import to assemble the full archipelago.", sourceEpsg);
+        }
     }
 
     /**
@@ -113,11 +133,13 @@ public class CaopImportService {
         triggerGeneration();
     }
 
-    private static ImportResult countByType(GpkgData data) {
+    /**
+     * Builds the result from distinct persisted codes per type, so entities merged across files
+     * (the Azores NUTS) are counted once rather than once per source file.
+     */
+    private static ImportResult distinctResult(Map<GeoUnitType, Set<String>> codesByType) {
         Map<String, Integer> counts = new HashMap<>();
-        for (GeoUnit unit : data.units()) {
-            counts.merge(unit.getType().name(), 1, Integer::sum);
-        }
+        codesByType.forEach((type, codes) -> counts.put(type.name(), codes.size()));
         return new ImportResult(counts);
     }
 
@@ -128,7 +150,14 @@ public class CaopImportService {
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("Precision generation started (async)");
-                        precisionGenerationService.generate();
+                        GenerationResult result = precisionGenerationService.generate();
+                        if (result.status() != GenerationStatus.SUCCESS) {
+                            log.error("Precision generation {} after import did NOT succeed "
+                                    + "(status={}). Layer endpoints keep serving the PREVIOUS "
+                                    + "precisions until a successful regeneration; check "
+                                    + "GET /api/v1/precision/status.",
+                                    result.generationId(), result.status());
+                        }
                     } catch (Exception e) {
                         log.error("Precision generation failed after import", e);
                     }

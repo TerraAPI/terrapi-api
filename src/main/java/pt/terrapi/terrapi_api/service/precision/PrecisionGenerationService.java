@@ -10,6 +10,7 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -24,6 +25,11 @@ public class PrecisionGenerationService {
 
     private final PrecisionWriter writer;
     private final PrecisionGenerationRepository generationRepository;
+
+    /** The most recent generation run, for surfacing precision health (used by the status endpoint). */
+    public Optional<PrecisionGeneration> latestGeneration() {
+        return generationRepository.findTopByOrderByCreatedAtDesc();
+    }
 
     public GenerationResult generate() {
         return generate(null, null);

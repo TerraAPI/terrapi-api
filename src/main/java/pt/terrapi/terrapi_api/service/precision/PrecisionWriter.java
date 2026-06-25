@@ -13,22 +13,22 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Transactional writer for {@code geo_unit_precisions}, built to preserve topology ACROSS layers.
+ * Transactional writer for {@code geo_unit_precisions}, with one shared topology across all layers.
  *
  * <p>Per LOD the <em>parish</em> coverage (the finest layer) is coverage-simplified once with
  * {@code ST_CoverageSimplify} at the shared tolerance, into a session temp table that also carries
  * each parish's municipality / district-or-island / NUTS codes. Parish precisions are inserted
- * directly; every coarser layer is then built by <em>dissolving</em> those simplified parishes with
- * {@code ST_CoverageUnion} grouped by the relevant code. Because all layers are composed of the
- * same simplified parish edges, they nest exactly (a parish boundary coincides with its
- * municipality / district / NUTS boundary at every LOD).
+ * directly; every coarser unit is then built by <em>dissolving</em> those same simplified parishes
+ * ({@code ST_CoverageUnion}) grouped by the relevant code, in a single statement. Because all
+ * features are composed of the same simplified parish edges, they nest exactly (a parish boundary
+ * coincides with its municipality / district / NUTS boundary at every LOD).
  *
- * <p>The classified border line network ({@code border_segments}) is still simplified independently
- * per arc ({@code ST_SimplifyPreserveTopology}) at the same tolerance — it carries edge-level
- * semantics not derivable from the polygon dissolve.
+ * <p>The classified border line network ({@code border_segments}) is simplified independently per
+ * arc ({@code ST_SimplifyPreserveTopology}) at the same tolerance — it carries edge-level semantics
+ * not derivable from the polygon dissolve.
  *
- * <p>The CAOP parish coverage is authoritative and valid; if it ever isn't, generation fails loudly
- * and rolls back rather than degrading.
+ * <p>Generation is always the full hierarchy; only the LOD scope can be narrowed. The CAOP parish
+ * coverage is authoritative and valid; if it ever isn't, generation fails loudly and rolls back.
  */
 @Slf4j
 @Service
@@ -71,23 +71,28 @@ public class PrecisionWriter {
             """.formatted(GeoUnitType.PARISH.getValue());
 
     /**
-     * Build a coarser layer by dissolving the simplified parishes grouped by a hierarchy code.
-     * {@code %1$s} = the grouping column; {@code %2$s} = optional " WHERE gu.type = N" filter.
-     * The unit's type is read from {@code geo_units} (so one dissolve of {@code dist_code} yields
-     * both DISTRICT and ISLAND with the correct type). Args bound: lod, tolerance, generationId.
+     * Build every coarser unit in one statement: unpivot each parish's ancestor codes
+     * (municipality / district-or-island / NUTS3 / NUTS2 / NUTS1), then dissolve the simplified
+     * parishes per code with {@code ST_CoverageUnion}. Each unit's type is read from
+     * {@code geo_units}. Args bound: lod, tolerance, generationId.
      */
-    private static final String INSERT_DISSOLVED_SQL = """
+    private static final String INSERT_COARSER_SQL = """
             INSERT INTO geo_unit_precisions
                 (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
                  generation_id, created_at)
-            SELECT d.code, gu.type, ?, ST_Transform(d.g, 4326), ?, ST_NPoints(d.g), ?, NOW()
+            SELECT gu.code, gu.type, ?, ST_Transform(u.g, 4326), ?, ST_NPoints(u.g), ?, NOW()
             FROM (
-                SELECT %1$s AS code, ST_SetSRID(ST_CoverageUnion(geom), 3763) AS g
-                FROM tmp_simp
-                WHERE %1$s IS NOT NULL
-                GROUP BY %1$s
-            ) d
-            JOIN geo_units gu ON gu.code = d.code%2$s
+                SELECT code, ST_SetSRID(ST_CoverageUnion(geom), 3763) AS g
+                FROM (
+                    SELECT muni_code  AS code, geom FROM tmp_simp WHERE muni_code  IS NOT NULL
+                    UNION ALL SELECT dist_code,  geom FROM tmp_simp WHERE dist_code  IS NOT NULL
+                    UNION ALL SELECT nuts3_code, geom FROM tmp_simp WHERE nuts3_code IS NOT NULL
+                    UNION ALL SELECT nuts2_code, geom FROM tmp_simp WHERE nuts2_code IS NOT NULL
+                    UNION ALL SELECT nuts1_code, geom FROM tmp_simp WHERE nuts1_code IS NOT NULL
+                ) up
+                GROUP BY code
+            ) u
+            JOIN geo_units gu ON gu.code = u.code
             """;
 
     /**
@@ -112,18 +117,9 @@ public class PrecisionWriter {
     private static final String ALL_UNITS_COUNT_SQL =
             "SELECT COUNT(*) FROM geo_units WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)";
 
-    private static final String UNITS_COUNT_FOR_TYPE_SQL =
-            "SELECT COUNT(*) FROM geo_units WHERE type = ? AND geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)";
-
     private static final String DELETE_ALL_SQL = "DELETE FROM geo_unit_precisions";
 
     private static final String DELETE_LOD_SQL = "DELETE FROM geo_unit_precisions WHERE lod = ?";
-
-    private static final String DELETE_TYPE_ALL_SQL =
-            "DELETE FROM geo_unit_precisions WHERE type = ?";
-
-    private static final String DELETE_TYPE_LOD_SQL =
-            "DELETE FROM geo_unit_precisions WHERE type = ? AND lod = ?";
 
     private static final String DELETE_BORDER_ALL_SQL = "DELETE FROM border_segment_precisions";
 
@@ -155,41 +151,35 @@ public class PrecisionWriter {
     }
 
     /**
-     * Rebuilds precisions at all LODs (or a single LOD when given), for all layers or a single
-     * {@code type}. All layers are derived from the simplified parish coverage so they nest.
-     * Border precisions are regenerated only on full (all-types) runs. Throws
-     * {@link GenerationFailedException} on an unhealthy result, rolling back.
+     * Rebuilds all precision layers (the full topology-preserving hierarchy) at every LOD, or a
+     * single LOD when given, in one transaction. Throws {@link GenerationFailedException} on an
+     * unhealthy result, rolling back.
      */
     @Transactional
-    public WriteResult write(UUID generationId, Integer lod, GeoUnitType type) {
+    public WriteResult write(UUID generationId, Integer lod) {
         List<LodLevel> ladder = ladderFor(lod);
         if (ladder.isEmpty()) {
             return WriteResult.empty();
         }
         int totalLods = ladder.size();
 
-        if (type == null) {
-            deleteFullScope(lod);
-        } else {
-            deleteScope(lod, type);
-        }
+        deleteFullScope(lod);
 
-        log.info("Precision {}: building topology-preserving hierarchy at {} LOD(s) (scope={})",
-                generationId, totalLods, type != null ? type.name() : "ALL");
+        log.info("Precision {}: building topology-preserving hierarchy at {} LOD(s)",
+                generationId, totalLods);
 
         for (LodLevel level : ladder) {
             long levelStart = System.currentTimeMillis();
             materializeSimplifiedParishes(level);
-            buildLayers(level, generationId, type);
-            if (type == null) {
-                insertBorders(level, generationId);
-            }
+            insertParish(level, generationId);
+            insertCoarserLayers(level, generationId);
+            insertBorders(level, generationId);
             log.info("  LOD {} @ {} m done in {} ms",
                     level.lod(), fmtTol(level.tolerance()), System.currentTimeMillis() - levelStart);
         }
 
         ValidationResult validation = validate(generationId);
-        int totalUnits = (type != null) ? unitsCountForType(type) : allUnitsCount();
+        int totalUnits = allUnitsCount();
         if (!isHealthy(validation, totalUnits, totalLods)) {
             throw new GenerationFailedException(
                     "Generation " + generationId + " unhealthy — rows=" + validation.totalRows
@@ -216,40 +206,19 @@ public class PrecisionWriter {
                 parishes, fmtTol(level.tolerance()), System.currentTimeMillis() - t0);
     }
 
-    /** Insert parish precisions and the dissolved coarser layers (all of them, or just {@code type}). */
-    private void buildLayers(LodLevel level, UUID generationId, GeoUnitType type) {
-        if (type == null || type == GeoUnitType.PARISH) {
-            int rows = jdbcTemplate.update(INSERT_PARISH_SQL,
-                    level.lod(), level.tolerance(), generationId);
-            log.info("    PARISH @ {} m -> {} rows", fmtTol(level.tolerance()), rows);
-        }
-        if (type == null) {
-            dissolve(level, generationId, "MUNICIPALITY", "muni_code", null);
-            dissolve(level, generationId, "DISTRICT/ISLAND", "dist_code", null);
-            dissolve(level, generationId, "NUTS3", "nuts3_code", null);
-            dissolve(level, generationId, "NUTS2", "nuts2_code", null);
-            dissolve(level, generationId, "NUTS1", "nuts1_code", null);
-        } else {
-            switch (type) {
-                case MUNICIPALITY -> dissolve(level, generationId, "MUNICIPALITY", "muni_code", null);
-                case DISTRICT -> dissolve(level, generationId, "DISTRICT", "dist_code", type.getValue());
-                case ISLAND -> dissolve(level, generationId, "ISLAND", "dist_code", type.getValue());
-                case NUTS3 -> dissolve(level, generationId, "NUTS3", "nuts3_code", null);
-                case NUTS2 -> dissolve(level, generationId, "NUTS2", "nuts2_code", null);
-                case NUTS1 -> dissolve(level, generationId, "NUTS1", "nuts1_code", null);
-                case PARISH -> { /* already inserted above */ }
-            }
-        }
+    private void insertParish(LodLevel level, UUID generationId) {
+        long t0 = System.currentTimeMillis();
+        int rows = jdbcTemplate.update(INSERT_PARISH_SQL, level.lod(), level.tolerance(), generationId);
+        log.info("    PARISH @ {} m -> {} rows in {} ms",
+                fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
     }
 
-    private void dissolve(LodLevel level, UUID generationId, String label, String keyColumn,
-                          Integer typeFilter) {
-        String filter = (typeFilter == null) ? "" : " WHERE gu.type = " + typeFilter;
-        String sql = String.format(INSERT_DISSOLVED_SQL, keyColumn, filter);
+    /** Build municipality, district/island and all NUTS levels by dissolving parishes (one query). */
+    private void insertCoarserLayers(LodLevel level, UUID generationId) {
         long t0 = System.currentTimeMillis();
-        int rows = jdbcTemplate.update(sql, level.lod(), level.tolerance(), generationId);
-        log.info("    {} (dissolve {}) @ {} m -> {} rows in {} ms",
-                label, keyColumn, fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
+        int rows = jdbcTemplate.update(INSERT_COARSER_SQL, level.lod(), level.tolerance(), generationId);
+        log.info("    coarser layers (dissolve) @ {} m -> {} rows in {} ms",
+                fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
     }
 
     private void insertBorders(LodLevel level, UUID generationId) {
@@ -281,21 +250,8 @@ public class PrecisionWriter {
         }
     }
 
-    private void deleteScope(Integer lod, GeoUnitType type) {
-        if (lod == null) {
-            jdbcTemplate.update(DELETE_TYPE_ALL_SQL, type.getValue());
-        } else {
-            jdbcTemplate.update(DELETE_TYPE_LOD_SQL, type.getValue(), lod);
-        }
-    }
-
     private int allUnitsCount() {
         Long count = jdbcTemplate.queryForObject(ALL_UNITS_COUNT_SQL, Long.class);
-        return count != null ? count.intValue() : 0;
-    }
-
-    private int unitsCountForType(GeoUnitType type) {
-        Long count = jdbcTemplate.queryForObject(UNITS_COUNT_FOR_TYPE_SQL, Long.class, type.getValue());
         return count != null ? count.intValue() : 0;
     }
 

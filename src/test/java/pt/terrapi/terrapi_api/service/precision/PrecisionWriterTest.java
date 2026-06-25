@@ -13,7 +13,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import pt.terrapi.terrapi_api.config.LodLevel;
 import pt.terrapi.terrapi_api.config.PrecisionProperties;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.ValidationResult;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
@@ -52,10 +51,9 @@ class PrecisionWriterTest {
         validation.setMaxEmptyPct(25.0);
         when(properties.getValidation()).thenReturn(validation);
 
-        // deletes: all (0 args), lod/type (1 int), type+lod (2 ints).
+        // deletes: all (0 args) and per-lod (1 int).
         when(jdbcTemplate.update(anyString())).thenReturn(0);
         when(jdbcTemplate.update(anyString(), anyInt())).thenReturn(0);
-        when(jdbcTemplate.update(anyString(), anyInt(), anyInt())).thenReturn(0);
         // layer inserts (lod, tolerance, generationId) and border inserts (+ tolerance again).
         when(jdbcTemplate.update(anyString(), anyInt(), anyDouble(), any(UUID.class))).thenReturn(5);
         when(jdbcTemplate.update(anyString(), anyInt(), anyDouble(), any(UUID.class), anyDouble()))
@@ -80,7 +78,7 @@ class PrecisionWriterTest {
         stubLadder(new LodLevel(0, 25.0));
         stubValidation(100, 0, 0, 0);
 
-        WriteResult result = writer.write(UUID.randomUUID(), null, null);
+        WriteResult result = writer.write(UUID.randomUUID(), null);
 
         assertThat(result.rowCount()).isEqualTo(100);
 
@@ -95,7 +93,7 @@ class PrecisionWriterTest {
         stubLadder(new LodLevel(0, 25.0));
         stubValidation(100, 0, 60, 0);
 
-        assertThatThrownBy(() -> writer.write(UUID.randomUUID(), null, null))
+        assertThatThrownBy(() -> writer.write(UUID.randomUUID(), null))
                 .isInstanceOf(PrecisionWriter.GenerationFailedException.class);
     }
 
@@ -104,7 +102,7 @@ class PrecisionWriterTest {
         stubLadder(new LodLevel(0, 25.0), new LodLevel(2, 200.0));
         stubValidation(50, 0, 0, 0);
 
-        writer.write(UUID.randomUUID(), 2, null);
+        writer.write(UUID.randomUUID(), 2);
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), anyInt());
@@ -115,21 +113,10 @@ class PrecisionWriterTest {
     void write_emptyLadder_returnsEmpty() {
         when(policyService.getLodLadder()).thenReturn(List.of());
 
-        WriteResult result = writer.write(UUID.randomUUID(), null, null);
+        WriteResult result = writer.write(UUID.randomUUID(), null);
 
         assertThat(result.rowCount()).isZero();
         assertThat(result.totalLods()).isZero();
     }
 
-    @Test
-    void write_singleType_scopesDeleteToType() {
-        stubLadder(new LodLevel(0, 25.0));
-        stubValidation(50, 0, 0, 0);
-
-        writer.write(UUID.randomUUID(), null, GeoUnitType.MUNICIPALITY);
-
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), anyInt());
-        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("WHERE type = ?"));
-    }
 }

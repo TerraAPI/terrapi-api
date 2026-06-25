@@ -62,7 +62,7 @@ public class ImportController {
             }
             return ResponseEntity.ok(caopImportService.importFolder(tempDir.toString()));
         } catch (Exception e) {
-            throw new RuntimeException("Upload import failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Upload import failed: " + e.getMessage(), e);
         } finally {
             deleteRecursively(tempDir);
         }
@@ -106,7 +106,7 @@ public class ImportController {
             ImportResult result = osmImportService.importPbf(tempFile.toString());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Upload failed: " + e.getMessage(), e);
         } finally {
             deleteQuietly(tempFile);
         }

@@ -1,8 +1,11 @@
 package pt.terrapi.terrapi_api.service.caop;
 
 import java.io.File;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -11,8 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import pt.terrapi.terrapi_api.dto.GenerationResult;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GenerationStatus;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
@@ -55,49 +61,52 @@ public class CaopImportService {
         }
 
         log.info("Importing {} .gpkg files from {}", files.length, folderPath);
+        // Full rebuild: start from an empty table so that entities split across files
+        // (the Azores NUTS levels) merge cleanly and scalar sums never double-count.
         writer.clearAuxData();
-        ImportResult total = ImportResult.empty();
+        writer.clearGeoUnits();
+        Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
         for (File file : files) {
-            total = total.add(importFile(file.getAbsolutePath()));
+            importFile(file.getAbsolutePath(), codesByType);
         }
-        log.info("Import finished — {}", total.counts());
-
-        finalizeImport();
-        return total;
-    }
-
-    @Transactional
-    public ImportResult importGpkg(String filePath) {
-        writer.clearAuxData();
-        ImportResult result = importFile(filePath);
+        ImportResult result = distinctResult(codesByType);
         log.info("Import finished — {}", result.counts());
 
-        finalizeImport();
+        finalizeImport(codesByType);
         return result;
     }
 
-    private ImportResult importFile(String filePath) {
+    private void importFile(String filePath, Map<GeoUnitType, Set<String>> codesByType) {
         long t0 = System.currentTimeMillis();
         GpkgData data = reader.read(filePath);
         writer.upsertGeoUnits(data.units(), data.sourceEpsg());
         writer.insertBorderSegments(data.borders(), data.sourceEpsg());
-        ImportResult result = countByType(data);
+        for (GeoUnit u : data.units()) {
+            codesByType.computeIfAbsent(u.getType(), k -> new HashSet<>()).add(u.getCode());
+        }
         log.info("  Imported {} units, {} borders in {} ms",
-                result.total(), data.borders().size(), System.currentTimeMillis() - t0);
-        return result;
+                data.units().size(), data.borders().size(), System.currentTimeMillis() - t0);
     }
 
-    private void finalizeImport() {
+    /**
+     * Verify (loudly — a thrown check rolls the import back), then derive and trigger precision
+     * regeneration. Integrity is checked before derivation so a corrupt import fails fast.
+     */
+    private void finalizeImport(Map<GeoUnitType, Set<String>> codesByType) {
         verifier.verifyGeometryIntegration();
+        verifier.verifyCompleteness(codesByType);
+        verifier.verifyReferentialIntegrity();
         deriver.deriveAll();
         triggerGeneration();
     }
 
-    private static ImportResult countByType(GpkgData data) {
+    /**
+     * Builds the result from distinct persisted codes per type, so entities merged across files
+     * (the Azores NUTS) are counted once rather than once per source file.
+     */
+    private static ImportResult distinctResult(Map<GeoUnitType, Set<String>> codesByType) {
         Map<String, Integer> counts = new HashMap<>();
-        for (GeoUnit unit : data.units()) {
-            counts.merge(unit.getType().name(), 1, Integer::sum);
-        }
+        codesByType.forEach((type, codes) -> counts.put(type.name(), codes.size()));
         return new ImportResult(counts);
     }
 
@@ -108,7 +117,14 @@ public class CaopImportService {
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("Precision generation started (async)");
-                        precisionGenerationService.generate();
+                        GenerationResult result = precisionGenerationService.generate();
+                        if (result.status() != GenerationStatus.SUCCESS) {
+                            log.error("Precision generation {} after import did NOT succeed "
+                                    + "(status={}). Layer endpoints keep serving the PREVIOUS "
+                                    + "precisions until a successful regeneration; check "
+                                    + "GET /api/v1/precision/status.",
+                                    result.generationId(), result.status());
+                        }
                     } catch (Exception e) {
                         log.error("Precision generation failed after import", e);
                     }

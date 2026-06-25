@@ -1,7 +1,6 @@
 package pt.terrapi.terrapi_api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.HashMap;
 import java.util.Map;
 
 public record ImportResult(
@@ -11,16 +10,6 @@ public record ImportResult(
 
     public ImportResult {
         counts = Map.copyOf(counts);
-    }
-
-    public static ImportResult empty() {
-        return new ImportResult(Map.of());
-    }
-
-    public ImportResult add(ImportResult other) {
-        Map<String, Integer> merged = new HashMap<>(counts);
-        other.counts.forEach((k, v) -> merged.merge(k, v, Integer::sum));
-        return new ImportResult(merged);
     }
 
     public int total() {

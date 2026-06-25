@@ -1,5 +1,6 @@
 package pt.terrapi.terrapi_api.service.precision;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import pt.terrapi.terrapi_api.dto.GenerationResult;
@@ -8,28 +9,29 @@ import pt.terrapi.terrapi_api.enums.GenerationStatus;
 import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
 import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Orchestrates precision generation: delegates the atomic delete+insert+validate of the whole
- * nested hierarchy to {@link PrecisionWriter} (which rolls back on failure) and records the run in
- * {@code precision_generations} regardless of outcome.
+ * Orchestrates precision generation: delegates the atomic delete+insert+validate of
+ * per-layer precisions to {@link PrecisionWriter} (which rolls back on failure) and records
+ * the run in {@code precision_generations} regardless of outcome.
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PrecisionGenerationService {
 
     private final PrecisionWriter writer;
     private final PrecisionGenerationRepository generationRepository;
 
-    public PrecisionGenerationService(PrecisionWriter writer,
-                                      PrecisionGenerationRepository generationRepository) {
-        this.writer = writer;
-        this.generationRepository = generationRepository;
+    /** The most recent generation run, for surfacing precision health (used by the status endpoint). */
+    public Optional<PrecisionGeneration> latestGeneration() {
+        return generationRepository.findTopByOrderByCreatedAtDesc();
     }
 
     public GenerationResult generate() {
-        return generate((Integer) null);
+        return generate(null);
     }
 
     public GenerationResult generate(Integer lod) {

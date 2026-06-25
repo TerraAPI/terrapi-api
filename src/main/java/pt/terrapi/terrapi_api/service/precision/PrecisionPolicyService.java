@@ -13,9 +13,9 @@ public class PrecisionPolicyService {
 
     private final PrecisionProperties properties;
 
-    /** The LOD ladder (one tolerance per level) driving the nested hierarchy. */
+    /** The single LOD ladder, shared by all {@code GeoUnitType}s. */
     public List<LodLevel> getLodLadder() {
-        return properties.getLod();
+        return properties.getLadder();
     }
 
     public boolean isSimplifyBoundary() {

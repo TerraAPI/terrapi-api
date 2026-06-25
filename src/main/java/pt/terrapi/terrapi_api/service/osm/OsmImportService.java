@@ -89,7 +89,7 @@ public class OsmImportService {
                     result.total(), System.currentTimeMillis() - t0);
             return result;
         } catch (IOException e) {
-            throw new RuntimeException("OSM import failed: " + e.getMessage(), e);
+            throw new IllegalStateException("OSM import failed: " + e.getMessage(), e);
         } finally {
             deleteQuietly(style);
         }

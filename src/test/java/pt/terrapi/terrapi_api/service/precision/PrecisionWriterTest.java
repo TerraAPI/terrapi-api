@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -50,13 +51,17 @@ class PrecisionWriterTest {
         validation.setMaxEmptyPct(25.0);
         when(properties.getValidation()).thenReturn(validation);
 
-        // update arities: delete-all (0), delete-lod (1 int),
-        // dissolve (2 uuid), parish insert (int, int, uuid).
+        // deletes: all (0 args) and per-lod (1 int).
         when(jdbcTemplate.update(anyString())).thenReturn(0);
         when(jdbcTemplate.update(anyString(), anyInt())).thenReturn(0);
-        when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class))).thenReturn(1);
-        when(jdbcTemplate.update(anyString(), anyInt(), anyInt(), any(UUID.class))).thenReturn(5);
+        // layer inserts (lod, tolerance, generationId) and border inserts (+ tolerance again).
+        when(jdbcTemplate.update(anyString(), anyInt(), anyDouble(), any(UUID.class))).thenReturn(5);
+        when(jdbcTemplate.update(anyString(), anyInt(), anyDouble(), any(UUID.class), anyDouble()))
+                .thenReturn(9);
+        // tmp_simp parish count (logging) and unit counts.
+        when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class))).thenReturn(3259);
         when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(100L);
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyInt())).thenReturn(100L);
     }
 
     private void stubLadder(LodLevel... levels) {
@@ -64,12 +69,12 @@ class PrecisionWriterTest {
     }
 
     private void stubValidation(int total, int nulls, int invalid, int empty) {
-        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(UUID.class)))
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any()))
                 .thenReturn(new ValidationResult(total, nulls, invalid, empty));
     }
 
     @Test
-    void write_buildsNestedHierarchy() {
+    void write_simplifiesParishBaseAndReportsValidationRowCount() {
         stubLadder(new LodLevel(0, 25.0));
         stubValidation(100, 0, 0, 0);
 
@@ -77,9 +82,10 @@ class PrecisionWriterTest {
 
         assertThat(result.rowCount()).isEqualTo(100);
 
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate, atLeastOnce()).update(sql.capture(), any(UUID.class), any(UUID.class));
-        assertThat(sql.getAllValues()).anyMatch(s -> s.contains("ST_CoverageUnion"));
+        // The hierarchy is built from one parish coverage-simplify per LOD (run via execute()).
+        ArgumentCaptor<String> exec = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, atLeastOnce()).execute(exec.capture());
+        assertThat(exec.getAllValues()).anyMatch(s -> s.contains("ST_CoverageSimplify"));
     }
 
     @Test
@@ -112,4 +118,5 @@ class PrecisionWriterTest {
         assertThat(result.rowCount()).isZero();
         assertThat(result.totalLods()).isZero();
     }
+
 }

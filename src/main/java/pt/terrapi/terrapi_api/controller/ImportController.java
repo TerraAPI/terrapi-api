@@ -14,8 +14,10 @@ import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.service.caop.CaopImportService;
 import pt.terrapi.terrapi_api.service.osm.OsmImportService;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/v1/import")
@@ -41,17 +43,46 @@ public class ImportController {
     }
 
     @PostMapping("/caop/upload")
-    @Operation(summary = "Import .gpkg file")
+    @Operation(summary = "Import the full CAOP dataset (all .gpkg files) as one rebuild",
+            description = "Upload every CAOP GeoPackage (Continente, Madeira and both Azores "
+                    + "groups) in a single multipart request. The files are written to a temp "
+                    + "directory and imported via the same clear+merge rebuild as the folder "
+                    + "import, so entities split across files (the Azores NUTS) are reassembled.")
     public ResponseEntity<ImportResult> importUpload(
-            @RequestParam("file") MultipartFile file) {
+            @Parameter(description = "All CAOP .gpkg files")
+            @RequestParam("files") MultipartFile[] files) {
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("No .gpkg files uploaded");
+        }
+        Path tempDir = null;
         try {
-            Path tempFile = Files.createTempFile("caop_", ".gpkg");
-            file.transferTo(tempFile.toFile());
-            ImportResult result = caopImportService.importGpkg(tempFile.toString());
-            Files.deleteIfExists(tempFile);
-            return ResponseEntity.ok(result);
+            tempDir = Files.createTempDirectory("caop_upload_");
+            for (int i = 0; i < files.length; i++) {
+                files[i].transferTo(tempDir.resolve("upload_" + i + ".gpkg"));
+            }
+            return ResponseEntity.ok(caopImportService.importFolder(tempDir.toString()));
         } catch (Exception e) {
-            throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Upload import failed: " + e.getMessage(), e);
+        } finally {
+            deleteRecursively(tempDir);
+        }
+    }
+
+    /** Best-effort recursive delete of the upload temp directory. */
+    private static void deleteRecursively(Path dir) {
+        if (dir == null) {
+            return;
+        }
+        try (var paths = Files.walk(dir)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException ignored) {
+                    // best-effort temp cleanup
+                }
+            });
+        } catch (IOException ignored) {
+            // best-effort temp cleanup
         }
     }
 
@@ -68,14 +99,28 @@ public class ImportController {
     @Operation(summary = "Import .pbf file via osm2pgsql")
     public ResponseEntity<ImportResult> importOsmUpload(
             @RequestParam("file") MultipartFile file) {
+        Path tempFile = null;
         try {
-            Path tempFile = Files.createTempFile("osm_", ".pbf");
+            tempFile = Files.createTempFile("osm_", ".pbf");
             file.transferTo(tempFile.toFile());
             ImportResult result = osmImportService.importPbf(tempFile.toString());
-            Files.deleteIfExists(tempFile);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+            throw new IllegalStateException("Upload failed: " + e.getMessage(), e);
+        } finally {
+            deleteQuietly(tempFile);
+        }
+    }
+
+    /** Best-effort delete of the upload temp file. */
+    private static void deleteQuietly(Path path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort temp cleanup
         }
     }
 }

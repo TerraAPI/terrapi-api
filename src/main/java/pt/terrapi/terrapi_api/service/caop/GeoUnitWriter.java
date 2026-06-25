@@ -19,6 +19,15 @@ public class GeoUnitWriter {
 
     private static final WKBWriter WKB_WRITER = new WKBWriter();
 
+    /**
+     * Upsert used by the full rebuild: a conflicting code <em>unions</em> the geometries and
+     * <em>sums</em> the disjoint scalar attributes, so an entity split across files — the Azores
+     * NUTS levels, whose {@code codigo} appears (partially) in both the Western and the
+     * Central+Eastern GeoPackages — is reassembled into one complete unit instead of one half
+     * silently overwriting the other. Idempotent for geometry ({@code ST_Union} of a fragment
+     * already contained is a no-op); the rebuild starts from an empty table
+     * ({@link #clearGeoUnits()}), so the scalar sums never double-count.
+     */
     private static final String UPSERT_GEO_UNIT_SQL = """
             INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
                                    type, parent_code, simplified_name, nuts3_code,
@@ -27,15 +36,23 @@ public class GeoUnitWriter {
                     ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (code) DO UPDATE SET
                 name = EXCLUDED.name,
-                geometry = EXCLUDED.geometry,
-                area_ha = EXCLUDED.area_ha,
-                perimeter_km = EXCLUDED.perimeter_km,
+                geometry = CASE
+                    WHEN geo_units.geometry IS NULL THEN EXCLUDED.geometry
+                    WHEN EXCLUDED.geometry IS NULL THEN geo_units.geometry
+                    ELSE ST_Multi(ST_UnaryUnion(
+                            ST_Collect(geo_units.geometry, EXCLUDED.geometry)))
+                END,
+                area_ha = COALESCE(geo_units.area_ha, 0) + COALESCE(EXCLUDED.area_ha, 0),
+                perimeter_km = COALESCE(geo_units.perimeter_km, 0)
+                               + COALESCE(EXCLUDED.perimeter_km, 0),
                 type = EXCLUDED.type,
                 parent_code = EXCLUDED.parent_code,
                 simplified_name = EXCLUDED.simplified_name,
                 nuts3_code = EXCLUDED.nuts3_code,
-                municipality_count = EXCLUDED.municipality_count,
-                parish_count = EXCLUDED.parish_count
+                municipality_count = COALESCE(geo_units.municipality_count, 0)
+                                     + COALESCE(EXCLUDED.municipality_count, 0),
+                parish_count = COALESCE(geo_units.parish_count, 0)
+                               + COALESCE(EXCLUDED.parish_count, 0)
             """;
 
     private static final String INSERT_BORDER_SQL = """
@@ -50,6 +67,21 @@ public class GeoUnitWriter {
         jdbcTemplate.update("DELETE FROM border_segments");
     }
 
+    /**
+     * Empties {@code geo_units} ahead of a full rebuild. Safe to call: no other table holds a
+     * foreign key to it — {@code geo_unit_precisions} and {@code geo_unit_adjacency} store the
+     * code as a plain column and are regenerated after the import. Clearing first lets the
+     * merge-mode upsert sum attributes without double-counting across re-imports.
+     */
+    public void clearGeoUnits() {
+        jdbcTemplate.update("DELETE FROM geo_units");
+    }
+
+    /**
+     * Upserts units transformed from {@code sourceEpsg} to EPSG:4326. Conflicting codes union
+     * geometry and sum scalars (see {@link #UPSERT_GEO_UNIT_SQL}), so entities split across files
+     * (the Azores NUTS) are reassembled; the rebuild clears the table first so sums don't repeat.
+     */
     public void upsertGeoUnits(List<GeoUnit> units, int sourceEpsg) {
         if (units.isEmpty()) return;
         jdbcTemplate.batchUpdate(UPSERT_GEO_UNIT_SQL, units, 50, (ps, u) -> {

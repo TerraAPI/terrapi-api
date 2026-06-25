@@ -11,108 +11,105 @@ import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
- * Transactional writer for {@code geo_unit_precisions}. Generation is hierarchical: the parish
- * coverage is coverage-simplified per LOD, then coarser layers are derived by dissolving the
- * already-simplified children ({@code ST_CoverageUnion}). All layers therefore share one edge
- * graph (parish ⊂ municipality ⊂ district; NUTS borders follow municipality borders). The CAOP
- * data is an authoritative, valid coverage; if it ever isn't, generation fails loudly and rolls
- * back rather than degrading.
+ * Transactional writer for {@code geo_unit_precisions}, with one shared topology across all layers.
+ *
+ * <p>Per LOD the <em>parish</em> coverage (the finest layer) is coverage-simplified once with
+ * {@code ST_CoverageSimplify} at the shared tolerance, into a session temp table that also carries
+ * each parish's municipality / district-or-island / NUTS codes. Parish precisions are inserted
+ * directly; every coarser unit is then built by <em>dissolving</em> those same simplified parishes
+ * ({@code ST_CoverageUnion}) grouped by the relevant code, in a single statement. Because all
+ * features are composed of the same simplified parish edges, they nest exactly (a parish boundary
+ * coincides with its municipality / district / NUTS boundary at every LOD).
+ *
+ * <p>The classified border line network ({@code border_segments}) is simplified independently per
+ * arc ({@code ST_SimplifyPreserveTopology}) at the same tolerance — it carries edge-level semantics
+ * not derivable from the polygon dissolve.
+ *
+ * <p>Generation is always the full hierarchy; only the LOD scope can be narrowed. The CAOP parish
+ * coverage is authoritative and valid; if it ever isn't, generation fails loudly and rolls back.
  */
 @Slf4j
 @Service
 public class PrecisionWriter {
 
-    private static final int PARISH = GeoUnitType.PARISH.getValue();
-    private static final int MUNICIPALITY = GeoUnitType.MUNICIPALITY.getValue();
-    private static final int NUTS3 = GeoUnitType.NUTS3.getValue();
-    private static final int NUTS2 = GeoUnitType.NUTS2.getValue();
-    private static final int NUTS1 = GeoUnitType.NUTS1.getValue();
-
-    private static final String INSERT_PARISH_SQL = """
-            WITH lods(lod, tolerance) AS (
-                VALUES %s
-            ),
-            base AS (
-                SELECT u.code,
-                       ST_Transform(
-                           CASE WHEN ST_SRID(u.geometry) = 0
-                                THEN ST_SetSRID(u.geometry, 4326)
-                                ELSE u.geometry END,
-                           3763) AS geom_3763
-                FROM geo_units u
-                WHERE u.type = ?
-                  AND u.geometry IS NOT NULL
-                  AND NOT ST_IsEmpty(u.geometry)
-            ),
-            simplified AS (
-                SELECT b.code, l.lod, l.tolerance,
-                       ST_SetSRID(ST_CoverageSimplify(b.geom_3763, l.tolerance, %s)
-                           OVER (PARTITION BY l.lod), 3763) AS simplified_3763
-                FROM base b
-                CROSS JOIN lods l
+    /**
+     * Simplify the parish coverage once at the given tolerance and carry up the hierarchy codes.
+     * Args: 1=tolerance (m), 2=simplifyBoundary, 3=PARISH type value.
+     */
+    private static final String CREATE_TMP_SIMP_SQL = """
+            CREATE TEMP TABLE tmp_simp ON COMMIT DROP AS
+            WITH simp AS (
+                SELECT p.code,
+                       ST_SetSRID(ST_CoverageSimplify(p.geometry_3763, %.1f, %s) OVER (), 3763) AS geom
+                FROM geo_units p
+                WHERE p.type = %d
+                  AND p.geometry_3763 IS NOT NULL
+                  AND NOT ST_IsEmpty(p.geometry_3763)
             )
+            SELECT s.code AS parish_code, s.geom,
+                   p.parent_code AS muni_code,
+                   m.parent_code  AS dist_code,
+                   p.nuts3_code   AS nuts3_code,
+                   n3.parent_code AS nuts2_code,
+                   n2.parent_code AS nuts1_code
+            FROM simp s
+            JOIN geo_units p  ON p.code  = s.code
+            LEFT JOIN geo_units m  ON m.code  = p.parent_code
+            LEFT JOIN geo_units n3 ON n3.code = p.nuts3_code
+            LEFT JOIN geo_units n2 ON n2.code = n3.parent_code
+            """;
+
+    /** Insert the simplified parishes themselves. Args bound: lod, tolerance, generationId. */
+    private static final String INSERT_PARISH_SQL = """
             INSERT INTO geo_unit_precisions
                 (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
                  generation_id, created_at)
-            SELECT code, ?, lod, ST_Transform(simplified_3763, 3857), tolerance,
-                   ST_NPoints(simplified_3763), ?, NOW()
-            FROM simplified
-            """;
+            SELECT parish_code, %d, ?, ST_Transform(geom, 4326), ?, ST_NPoints(geom), ?, NOW()
+            FROM tmp_simp
+            """.formatted(GeoUnitType.PARISH.getValue());
 
-    /** Dissolve a source layer's precisions into a parent layer with a fixed target type. */
-    private static final String DISSOLVE_BY_COLUMN_SQL = """
+    /**
+     * Build every coarser unit in one statement: unpivot each parish's ancestor codes
+     * (municipality / district-or-island / NUTS3 / NUTS2 / NUTS1), then dissolve the simplified
+     * parishes per code with {@code ST_CoverageUnion}. Each unit's type is read from
+     * {@code geo_units}. Args bound: lod, tolerance, generationId.
+     */
+    private static final String INSERT_COARSER_SQL = """
             INSERT INTO geo_unit_precisions
-                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count, generation_id, created_at)
-            SELECT code, %d, %d, geom, %.1f, ST_NPoints(geom), ?, NOW()
+                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count,
+                 generation_id, created_at)
+            SELECT gu.code, gu.type, ?, ST_Transform(u.g, 4326), ?, ST_NPoints(u.g), ?, NOW()
             FROM (
-                SELECT %s AS code, ST_CoverageUnion(gp.geometry) AS geom
-                FROM geo_unit_precisions gp
-                JOIN geo_units u ON u.code = gp.geo_unit_code
-                WHERE gp.type = %d AND gp.lod = %d AND gp.generation_id = ?
-                  AND %s IS NOT NULL
-                GROUP BY %s
-            ) d
-            """;
-
-    /** Dissolve municipalities into their parent, taking the target type from the parent unit. */
-    private static final String DISSOLVE_TO_PARENT_TYPE_SQL = """
-            INSERT INTO geo_unit_precisions
-                (geo_unit_code, type, lod, geometry, tolerance_m, vertex_count, generation_id, created_at)
-            SELECT code, gtype, %d, geom, %.1f, ST_NPoints(geom), ?, NOW()
-            FROM (
-                SELECT d.code AS code, d.type AS gtype, ST_CoverageUnion(gp.geometry) AS geom
-                FROM geo_unit_precisions gp
-                JOIN geo_units u ON u.code = gp.geo_unit_code
-                JOIN geo_units d ON d.code = u.parent_code
-                WHERE gp.type = %d AND gp.lod = %d AND gp.generation_id = ?
-                GROUP BY d.code, d.type
-            ) x
+                SELECT code, ST_SetSRID(ST_CoverageUnion(geom), 3763) AS g
+                FROM (
+                    SELECT muni_code  AS code, geom FROM tmp_simp WHERE muni_code  IS NOT NULL
+                    UNION ALL SELECT dist_code,  geom FROM tmp_simp WHERE dist_code  IS NOT NULL
+                    UNION ALL SELECT nuts3_code, geom FROM tmp_simp WHERE nuts3_code IS NOT NULL
+                    UNION ALL SELECT nuts2_code, geom FROM tmp_simp WHERE nuts2_code IS NOT NULL
+                    UNION ALL SELECT nuts1_code, geom FROM tmp_simp WHERE nuts1_code IS NOT NULL
+                ) up
+                GROUP BY code
+            ) u
+            JOIN geo_units gu ON gu.code = u.code
             """;
 
     /**
-     * Independently line-simplify each classified border arc ({@code ST_SimplifyPreserveTopology})
-     * per LOD. Arc endpoints (shared network nodes) are preserved, so the network stays connected.
-     * Edge-level semantics ({@code level}, {@code lineType}) are carried through from the source.
+     * Independently line-simplify each classified border arc per LOD ({@code geometry_3763} is the
+     * pre-projected source). Arc endpoints (shared network nodes) are preserved.
      */
     private static final String INSERT_BORDER_SQL = """
             INSERT INTO border_segment_precisions
                 (border_segment_id, level, line_type, length_km, lod, geometry,
                  tolerance_m, vertex_count, generation_id, created_at)
-            SELECT id, level, line_type, length_km, ?, ST_Transform(simplified_3763, 3857),
+            SELECT id, level, line_type, length_km, ?, ST_Transform(simplified_3763, 4326),
                    ?, ST_NPoints(simplified_3763), ?, NOW()
             FROM (
                 SELECT b.id, b.level, b.line_type, b.length_km,
-                       ST_SimplifyPreserveTopology(
-                           ST_Transform(
-                               CASE WHEN ST_SRID(b.geometry) = 0
-                                    THEN ST_SetSRID(b.geometry, 4326)
-                                    ELSE b.geometry END,
-                               3763), ?) AS simplified_3763
+                       ST_SimplifyPreserveTopology(b.geometry_3763, ?) AS simplified_3763
                 FROM border_segments b
-                WHERE b.geometry IS NOT NULL AND NOT ST_IsEmpty(b.geometry)
+                WHERE b.geometry_3763 IS NOT NULL AND NOT ST_IsEmpty(b.geometry_3763)
             ) s
             WHERE simplified_3763 IS NOT NULL AND NOT ST_IsEmpty(simplified_3763)
             """;
@@ -154,8 +151,9 @@ public class PrecisionWriter {
     }
 
     /**
-     * Rebuilds the nested hierarchy for all LODs, or a single LOD when given, in one transaction.
-     * Throws {@link GenerationFailedException} on an unhealthy result, rolling back.
+     * Rebuilds all precision layers (the full topology-preserving hierarchy) at every LOD, or a
+     * single LOD when given, in one transaction. Throws {@link GenerationFailedException} on an
+     * unhealthy result, rolling back.
      */
     @Transactional
     public WriteResult write(UUID generationId, Integer lod) {
@@ -163,16 +161,25 @@ public class PrecisionWriter {
         if (ladder.isEmpty()) {
             return WriteResult.empty();
         }
+        int totalLods = ladder.size();
 
-        deleteScope(lod);
+        deleteFullScope(lod);
+
+        log.info("Precision {}: building topology-preserving hierarchy at {} LOD(s)",
+                generationId, totalLods);
+
         for (LodLevel level : ladder) {
-            buildHierarchy(level, generationId);
+            long levelStart = System.currentTimeMillis();
+            materializeSimplifiedParishes(level);
+            insertParish(level, generationId);
+            insertCoarserLayers(level, generationId);
+            insertBorders(level, generationId);
+            log.info("  LOD {} @ {} m done in {} ms",
+                    level.lod(), fmtTol(level.tolerance()), System.currentTimeMillis() - levelStart);
         }
-        log.info("  Generated nested hierarchy for {} LOD level(s)", ladder.size());
 
         ValidationResult validation = validate(generationId);
         int totalUnits = allUnitsCount();
-        int totalLods = ladder.size();
         if (!isHealthy(validation, totalUnits, totalLods)) {
             throw new GenerationFailedException(
                     "Generation " + generationId + " unhealthy — rows=" + validation.totalRows
@@ -185,41 +192,45 @@ public class PrecisionWriter {
                 totalUnits, totalLods);
     }
 
-    private void buildHierarchy(LodLevel level, UUID generationId) {
-        int lod = level.lod();
-        double t = level.tolerance();
-        insertParishBase(level, generationId);
-        dissolveByColumn(MUNICIPALITY, PARISH, lod, t, "u.parent_code", generationId);
-        dissolveToParentType(MUNICIPALITY, lod, t, generationId);
-        dissolveByColumn(NUTS3, MUNICIPALITY, lod, t, "u.nuts3_code", generationId);
-        dissolveByColumn(NUTS2, NUTS3, lod, t, "u.parent_code", generationId);
-        dissolveByColumn(NUTS1, NUTS2, lod, t, "u.parent_code", generationId);
-        insertBorderPrecisions(level, generationId);
+    /** Simplify the parish coverage once for this LOD into {@code tmp_simp}. */
+    private void materializeSimplifiedParishes(LodLevel level) {
+        String sql = String.format(Locale.US, CREATE_TMP_SIMP_SQL,
+                level.tolerance(),
+                policyService.isSimplifyBoundary() ? "true" : "false",
+                GeoUnitType.PARISH.getValue());
+        long t0 = System.currentTimeMillis();
+        jdbcTemplate.execute("DROP TABLE IF EXISTS tmp_simp");
+        jdbcTemplate.execute(sql);
+        Integer parishes = jdbcTemplate.queryForObject("SELECT count(*) FROM tmp_simp", Integer.class);
+        log.info("    simplified {} parishes @ {} m in {} ms",
+                parishes, fmtTol(level.tolerance()), System.currentTimeMillis() - t0);
     }
 
-    private void insertBorderPrecisions(LodLevel level, UUID generationId) {
-        jdbcTemplate.update(INSERT_BORDER_SQL,
+    private void insertParish(LodLevel level, UUID generationId) {
+        long t0 = System.currentTimeMillis();
+        int rows = jdbcTemplate.update(INSERT_PARISH_SQL, level.lod(), level.tolerance(), generationId);
+        log.info("    PARISH @ {} m -> {} rows in {} ms",
+                fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
+    }
+
+    /** Build municipality, district/island and all NUTS levels by dissolving parishes (one query). */
+    private void insertCoarserLayers(LodLevel level, UUID generationId) {
+        long t0 = System.currentTimeMillis();
+        int rows = jdbcTemplate.update(INSERT_COARSER_SQL, level.lod(), level.tolerance(), generationId);
+        log.info("    coarser layers (dissolve) @ {} m -> {} rows in {} ms",
+                fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
+    }
+
+    private void insertBorders(LodLevel level, UUID generationId) {
+        long t0 = System.currentTimeMillis();
+        int rows = jdbcTemplate.update(INSERT_BORDER_SQL,
                 level.lod(), level.tolerance(), generationId, level.tolerance());
+        log.info("    borders @ {} m -> {} rows in {} ms",
+                fmtTol(level.tolerance()), rows, System.currentTimeMillis() - t0);
     }
 
-    private void insertParishBase(LodLevel level, UUID generationId) {
-        String valuesClause = String.format(Locale.US, "(%d, %.1f)", level.lod(), level.tolerance());
-        String sql = String.format(INSERT_PARISH_SQL, valuesClause,
-                policyService.isSimplifyBoundary() ? "true" : "false");
-        jdbcTemplate.update(sql, PARISH, PARISH, generationId);
-    }
-
-    private void dissolveByColumn(int targetType, int sourceType, int lod, double tolerance,
-                                  String groupColumn, UUID generationId) {
-        String sql = String.format(Locale.US, DISSOLVE_BY_COLUMN_SQL,
-                targetType, lod, tolerance, groupColumn, sourceType, lod, groupColumn, groupColumn);
-        jdbcTemplate.update(sql, generationId, generationId);
-    }
-
-    private void dissolveToParentType(int sourceType, int lod, double tolerance, UUID generationId) {
-        String sql = String.format(Locale.US, DISSOLVE_TO_PARENT_TYPE_SQL,
-                lod, tolerance, sourceType, lod);
-        jdbcTemplate.update(sql, generationId, generationId);
+    private static String fmtTol(double tolerance) {
+        return String.format(Locale.US, "%.0f", tolerance);
     }
 
     private List<LodLevel> ladderFor(Integer lod) {
@@ -229,7 +240,7 @@ public class PrecisionWriter {
         return ladder.stream().filter(l -> l.lod() == lod).toList();
     }
 
-    private void deleteScope(Integer lod) {
+    private void deleteFullScope(Integer lod) {
         if (lod == null) {
             jdbcTemplate.update(DELETE_ALL_SQL);
             jdbcTemplate.update(DELETE_BORDER_ALL_SQL);

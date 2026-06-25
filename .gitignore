@@ -38,3 +38,4 @@ build/
 #### Geopackage files ###
 /caop
 /osm
+/report

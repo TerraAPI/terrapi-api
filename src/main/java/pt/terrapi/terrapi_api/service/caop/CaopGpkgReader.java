@@ -107,7 +107,33 @@ public class CaopGpkgReader {
                 borders.add(RowMappers.mapBorderSegment(rs));
             }
         }
+        warnOnSuspectBorderClassification(table, borders);
         return borders;
+    }
+
+    /**
+     * Border level ({@code nivel_limite_admin}) and line type ({@code significado_linha}) are
+     * parsed with text heuristics in {@link RowMappers}; a change in the source wording would make
+     * them silently mis-classify. Warn loudly on the tell-tale signs: any unparseable level, or a
+     * dataset that produced zero COAST/WATER arcs (every CAOP region touches the sea).
+     */
+    private static void warnOnSuspectBorderClassification(String table, List<BorderSegment> borders) {
+        if (borders.isEmpty()) {
+            return;
+        }
+        long unparseableLevel = borders.stream().filter(b -> b.getLevel() == null).count();
+        long coastalOrWater = borders.stream()
+                .filter(b -> "COAST".equals(b.getLineType()) || "WATER".equals(b.getLineType()))
+                .count();
+        if (unparseableLevel > 0) {
+            log.warn("{}: {}/{} border arcs have an unparseable admin level — check "
+                    + "nivel_limite_admin wording", table, unparseableLevel, borders.size());
+        }
+        if (coastalOrWater == 0) {
+            log.warn("{}: 0 of {} border arcs classified as COAST/WATER — significado_linha wording "
+                    + "may have changed and parseLineType silently defaulted everything to LAND",
+                    table, borders.size());
+        }
     }
 
     private static String detectPrefix(Connection conn) throws Exception {

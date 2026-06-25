@@ -5,6 +5,7 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -13,11 +14,11 @@ import java.util.List;
 @ConfigurationProperties("terrapi.precision")
 public class PrecisionProperties {
 
-    /** The single LOD ladder (one tolerance per level) driving the nested hierarchy. */
-    private List<LodLevel> lod;
+    /** Single LOD ladder shared by all {@code GeoUnitType}s (EPSG:3763 metre tolerances). */
+    private List<LodLevel> ladder = new ArrayList<>();
     private Validation validation = new Validation();
 
-    private boolean simplifyBoundary = false;
+    private boolean simplifyBoundary = true;
 
     @Getter
     @Setter

@@ -2,8 +2,6 @@ package pt.terrapi.terrapi_api.entities;
 
 import jakarta.persistence.*;
 
-import java.util.ArrayList;
-import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -32,6 +30,13 @@ public class GeoUnit {
     @Column(columnDefinition = "geometry(Geometry, 4326)")
     private Geometry geometry;
 
+    /**
+     * {@link #geometry} pre-transformed to EPSG:3763 (metre CRS), populated once at import.
+     * Precision generation simplifies from this directly, avoiding a per-generation reprojection.
+     */
+    @Column(name = "geometry_3763", columnDefinition = "geometry(Geometry, 3763)")
+    private Geometry geometry3763;
+
     private Double areaHa;
 
     private Double perimeterKm;
@@ -42,9 +47,6 @@ public class GeoUnit {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_code")
     private GeoUnit parent;
-
-    @OneToMany(mappedBy = "parent")
-    private List<GeoUnit> children = new ArrayList<>();
 
     /**
      * Simplified name - only populated for {@link GeoUnitType#PARISH} units.

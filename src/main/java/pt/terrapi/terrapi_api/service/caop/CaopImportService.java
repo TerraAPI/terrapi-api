@@ -1,8 +1,11 @@
 package pt.terrapi.terrapi_api.service.caop;
 
 import java.io.File;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pt.terrapi.terrapi_api.dto.ImportResult;
 import pt.terrapi.terrapi_api.entities.GeoUnit;
+import pt.terrapi.terrapi_api.enums.GeoUnitType;
 import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.terrapi_api.service.precision.PrecisionGenerationService;
 
@@ -60,12 +64,13 @@ public class CaopImportService {
         writer.clearAuxData();
         writer.clearGeoUnits();
         ImportResult total = ImportResult.empty();
+        Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
         for (File file : files) {
-            total = total.add(importFile(file.getAbsolutePath(), true));
+            total = total.add(importFile(file.getAbsolutePath(), true, codesByType));
         }
         log.info("Import finished — {}", total.counts());
 
-        finalizeImport();
+        finalizeImport(codesByType);
         return total;
     }
 
@@ -73,26 +78,37 @@ public class CaopImportService {
     public ImportResult importGpkg(String filePath) {
         // Incremental single-file import: replace conflicting codes, leave other regions intact.
         writer.clearAuxData();
-        ImportResult result = importFile(filePath, false);
+        Map<GeoUnitType, Set<String>> codesByType = new EnumMap<>(GeoUnitType.class);
+        ImportResult result = importFile(filePath, false, codesByType);
         log.info("Import finished — {}", result.counts());
 
-        finalizeImport();
+        finalizeImport(codesByType);
         return result;
     }
 
-    private ImportResult importFile(String filePath, boolean merge) {
+    private ImportResult importFile(String filePath, boolean merge,
+                                    Map<GeoUnitType, Set<String>> codesByType) {
         long t0 = System.currentTimeMillis();
         GpkgData data = reader.read(filePath);
         writer.upsertGeoUnits(data.units(), data.sourceEpsg(), merge);
         writer.insertBorderSegments(data.borders(), data.sourceEpsg());
+        for (GeoUnit u : data.units()) {
+            codesByType.computeIfAbsent(u.getType(), k -> new HashSet<>()).add(u.getCode());
+        }
         ImportResult result = countByType(data);
         log.info("  Imported {} units, {} borders in {} ms",
                 result.total(), data.borders().size(), System.currentTimeMillis() - t0);
         return result;
     }
 
-    private void finalizeImport() {
+    /**
+     * Verify (loudly — a thrown check rolls the import back), then derive and trigger precision
+     * regeneration. Integrity is checked before derivation so a corrupt import fails fast.
+     */
+    private void finalizeImport(Map<GeoUnitType, Set<String>> codesByType) {
         verifier.verifyGeometryIntegration();
+        verifier.verifyCompleteness(codesByType);
+        verifier.verifyReferentialIntegrity();
         deriver.deriveAll();
         triggerGeneration();
     }

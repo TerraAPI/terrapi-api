@@ -31,7 +31,7 @@ public class BorderService {
                     'type', 'Feature',
                     'properties', jsonb_build_object(
                         'level', level, 'type', line_type, 'lengthKm', length_km),
-                    'geometry', ST_AsGeoJSON(ST_Transform(geometry, 4326))::jsonb)), '[]'::jsonb))::text
+                    'geometry', ST_AsGeoJSON(geometry)::jsonb)), '[]'::jsonb))::text
             FROM border_segment_precisions
             WHERE geometry IS NOT NULL AND lod = ?
             """;

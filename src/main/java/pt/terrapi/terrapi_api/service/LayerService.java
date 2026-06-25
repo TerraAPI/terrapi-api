@@ -50,7 +50,7 @@ public class LayerService {
                                    THEN ST_Y(u.representative_point) END,
                         'municipalityCount', u.municipality_count,
                         'parishCount', u.parish_count),
-                    'geometry', ST_AsGeoJSON(ST_Transform(gp.geometry, 4326))::jsonb)), '[]'::jsonb))::text
+                    'geometry', ST_AsGeoJSON(gp.geometry)::jsonb)), '[]'::jsonb))::text
             FROM geo_unit_precisions gp
             JOIN geo_units u ON u.code = gp.geo_unit_code
             WHERE gp.type = ? AND gp.lod = ?

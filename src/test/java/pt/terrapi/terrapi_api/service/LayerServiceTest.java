@@ -39,12 +39,13 @@ class LayerServiceTest {
     }
 
     @Test
-    void buildLayerSql_noParent_usesPrecisionsAndTransform() {
+    void buildLayerSql_noParent_servesPrecisionsWithoutTransform() {
         String sql = LayerService.buildLayerSql(false);
 
         assertThat(sql)
                 .contains("geo_unit_precisions")
-                .contains("ST_Transform")
+                .contains("ST_AsGeoJSON(gp.geometry)")
+                .doesNotContain("ST_Transform")
                 .doesNotContain("u.parent_code = ?");
     }
 

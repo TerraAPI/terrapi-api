@@ -99,14 +99,28 @@ public class ImportController {
     @Operation(summary = "Import .pbf file via osm2pgsql")
     public ResponseEntity<ImportResult> importOsmUpload(
             @RequestParam("file") MultipartFile file) {
+        Path tempFile = null;
         try {
-            Path tempFile = Files.createTempFile("osm_", ".pbf");
+            tempFile = Files.createTempFile("osm_", ".pbf");
             file.transferTo(tempFile.toFile());
             ImportResult result = osmImportService.importPbf(tempFile.toString());
-            Files.deleteIfExists(tempFile);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             throw new RuntimeException("Upload failed: " + e.getMessage(), e);
+        } finally {
+            deleteQuietly(tempFile);
+        }
+    }
+
+    /** Best-effort delete of the upload temp file. */
+    private static void deleteQuietly(Path path) {
+        if (path == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
+            // best-effort temp cleanup
         }
     }
 }

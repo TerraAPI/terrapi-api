@@ -1,11 +1,11 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.service.precision;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pt.terrapi.pipeline.precision.LodLevel;
-import pt.terrapi.pipeline.precision.PrecisionProperties;
+import pt.terrapi.pipeline.config.LodLevel;
+import pt.terrapi.pipeline.config.PrecisionProperties;
 import pt.terrapi.core.enums.GeoUnitType;
 
 import java.util.List;

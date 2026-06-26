@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.imports.controller;
+package pt.terrapi.pipeline.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import pt.terrapi.core.dto.ImportResult;
-import pt.terrapi.pipeline.imports.service.caop.CaopImportService;
-import pt.terrapi.pipeline.imports.service.osm.OsmImportService;
+import pt.terrapi.pipeline.service.caop.CaopImportService;
+import pt.terrapi.pipeline.service.osm.OsmImportService;
 
 import java.io.IOException;
 import java.nio.file.Files;

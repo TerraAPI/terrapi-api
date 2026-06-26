@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.imports.service.caop;
+package pt.terrapi.pipeline.service.caop;
 
 import java.util.ArrayList;
 import java.util.List;

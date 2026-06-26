@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
-import pt.terrapi.pipeline.precision.GenerationStatus;
+import pt.terrapi.pipeline.enums.GenerationStatus;
 
 import java.time.Instant;
 import java.util.UUID;

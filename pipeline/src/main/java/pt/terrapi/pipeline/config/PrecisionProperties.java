@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.config;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.service.precision;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,10 +11,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import pt.terrapi.pipeline.precision.LodLevel;
-import pt.terrapi.pipeline.precision.PrecisionProperties;
-import pt.terrapi.pipeline.precision.PrecisionWriter.ValidationResult;
-import pt.terrapi.pipeline.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.pipeline.config.LodLevel;
+import pt.terrapi.pipeline.config.PrecisionProperties;
+import pt.terrapi.pipeline.service.precision.PrecisionWriter.ValidationResult;
+import pt.terrapi.pipeline.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.List;
 import java.util.UUID;

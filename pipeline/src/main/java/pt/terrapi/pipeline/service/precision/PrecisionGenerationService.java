@@ -1,13 +1,13 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.service.precision;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import pt.terrapi.pipeline.precision.GenerationResult;
-import pt.terrapi.pipeline.precision.PrecisionGeneration;
-import pt.terrapi.pipeline.precision.GenerationStatus;
-import pt.terrapi.pipeline.precision.PrecisionGenerationRepository;
-import pt.terrapi.pipeline.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.pipeline.dto.GenerationResult;
+import pt.terrapi.pipeline.entities.PrecisionGeneration;
+import pt.terrapi.pipeline.enums.GenerationStatus;
+import pt.terrapi.pipeline.repository.PrecisionGenerationRepository;
+import pt.terrapi.pipeline.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.Optional;
 import java.util.UUID;

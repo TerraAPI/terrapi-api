@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.imports.service.osm;
+package pt.terrapi.pipeline.service.osm;
 
 import java.io.BufferedReader;
 import java.io.File;

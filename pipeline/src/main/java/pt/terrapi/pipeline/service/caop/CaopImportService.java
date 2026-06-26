@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.imports.service.caop;
+package pt.terrapi.pipeline.service.caop;
 
 import java.io.File;
 import java.util.EnumMap;
@@ -14,13 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import pt.terrapi.pipeline.precision.GenerationResult;
+import pt.terrapi.pipeline.dto.GenerationResult;
 import pt.terrapi.core.dto.ImportResult;
 import pt.terrapi.core.entities.GeoUnit;
-import pt.terrapi.pipeline.precision.GenerationStatus;
+import pt.terrapi.pipeline.enums.GenerationStatus;
 import pt.terrapi.core.enums.GeoUnitType;
-import pt.terrapi.pipeline.imports.service.caop.CaopGpkgReader.GpkgData;
-import pt.terrapi.pipeline.precision.PrecisionGenerationService;
+import pt.terrapi.pipeline.service.caop.CaopGpkgReader.GpkgData;
+import pt.terrapi.pipeline.service.precision.PrecisionGenerationService;
 
 /**
  * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) → write to PostGIS

@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.pipeline.precision.GenerationResult;
-import pt.terrapi.pipeline.precision.PrecisionGeneration;
-import pt.terrapi.pipeline.precision.PrecisionGenerationService;
+import pt.terrapi.pipeline.dto.GenerationResult;
+import pt.terrapi.pipeline.entities.PrecisionGeneration;
+import pt.terrapi.pipeline.service.precision.PrecisionGenerationService;
 
 @RestController
 @RequestMapping("/api/v1/precision")

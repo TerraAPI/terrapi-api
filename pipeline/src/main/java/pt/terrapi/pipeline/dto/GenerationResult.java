@@ -1,6 +1,6 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.dto;
 
-import pt.terrapi.pipeline.precision.GenerationStatus;
+import pt.terrapi.pipeline.enums.GenerationStatus;
 
 import java.util.UUID;
 

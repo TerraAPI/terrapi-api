@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.imports.service.caop;
+package pt.terrapi.pipeline.service.caop;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

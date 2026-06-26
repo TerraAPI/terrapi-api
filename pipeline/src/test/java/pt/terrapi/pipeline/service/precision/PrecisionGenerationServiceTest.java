@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.precision;
+package pt.terrapi.pipeline.service.precision;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,11 +9,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import pt.terrapi.pipeline.precision.GenerationResult;
-import pt.terrapi.pipeline.precision.PrecisionGeneration;
-import pt.terrapi.pipeline.precision.GenerationStatus;
-import pt.terrapi.pipeline.precision.PrecisionGenerationRepository;
-import pt.terrapi.pipeline.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.pipeline.dto.GenerationResult;
+import pt.terrapi.pipeline.entities.PrecisionGeneration;
+import pt.terrapi.pipeline.enums.GenerationStatus;
+import pt.terrapi.pipeline.repository.PrecisionGenerationRepository;
+import pt.terrapi.pipeline.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.UUID;
 

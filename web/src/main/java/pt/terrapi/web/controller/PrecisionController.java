@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pt.terrapi.core.dto.GenerationResult;
 import pt.terrapi.core.entities.PrecisionGeneration;
-import pt.terrapi.web.service.precision.PrecisionGenerationService;
+import pt.terrapi.core.service.precision.PrecisionGenerationService;
 
 @RestController
 @RequestMapping("/api/v1/precision")

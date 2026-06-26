@@ -1,4 +1,4 @@
-package pt.terrapi.web.service.precision;
+package pt.terrapi.core.service.precision;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +7,7 @@ import pt.terrapi.core.dto.GenerationResult;
 import pt.terrapi.core.entities.PrecisionGeneration;
 import pt.terrapi.core.enums.GenerationStatus;
 import pt.terrapi.core.repository.PrecisionGenerationRepository;
-import pt.terrapi.web.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.core.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.Optional;
 import java.util.UUID;

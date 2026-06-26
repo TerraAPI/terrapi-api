@@ -1,4 +1,4 @@
-package pt.terrapi.web.service.precision;
+package pt.terrapi.core.service.precision;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ import pt.terrapi.core.dto.GenerationResult;
 import pt.terrapi.core.entities.PrecisionGeneration;
 import pt.terrapi.core.enums.GenerationStatus;
 import pt.terrapi.core.repository.PrecisionGenerationRepository;
-import pt.terrapi.web.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.core.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.UUID;
 

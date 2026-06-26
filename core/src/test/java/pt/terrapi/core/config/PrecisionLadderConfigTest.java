@@ -1,4 +1,4 @@
-package pt.terrapi.web.config;
+package pt.terrapi.core.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -9,7 +9,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.ClassPathResource;
 import pt.terrapi.core.config.LodLevel;
 import pt.terrapi.core.config.PrecisionProperties;
-import pt.terrapi.web.service.precision.PrecisionPolicyService;
+import pt.terrapi.core.service.precision.PrecisionPolicyService;
 
 import java.io.IOException;
 import java.util.List;

@@ -1,4 +1,4 @@
-package pt.terrapi.web.service.precision;
+package pt.terrapi.core.service.precision;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,8 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import pt.terrapi.core.config.LodLevel;
 import pt.terrapi.core.config.PrecisionProperties;
-import pt.terrapi.web.service.precision.PrecisionWriter.ValidationResult;
-import pt.terrapi.web.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.core.service.precision.PrecisionWriter.ValidationResult;
+import pt.terrapi.core.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.List;
 import java.util.UUID;

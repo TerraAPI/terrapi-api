@@ -20,7 +20,7 @@ import pt.terrapi.core.entities.GeoUnit;
 import pt.terrapi.core.enums.GenerationStatus;
 import pt.terrapi.core.enums.GeoUnitType;
 import pt.terrapi.imports.service.caop.CaopGpkgReader.GpkgData;
-import pt.terrapi.web.service.precision.PrecisionGenerationService;
+import pt.terrapi.core.service.precision.PrecisionGenerationService;
 
 /**
  * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) в†’ write to PostGIS

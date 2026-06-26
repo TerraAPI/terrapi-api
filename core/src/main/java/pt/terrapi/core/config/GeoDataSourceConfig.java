@@ -1,12 +1,15 @@
 package pt.terrapi.core.config;
 
 import jakarta.persistence.EntityManagerFactory;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jpa.EntityManagerFactoryBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
@@ -44,8 +47,23 @@ public class GeoDataSourceConfig {
         return properties.initializeDataSourceBuilder().build();
     }
 
+    @Bean
+    public Flyway geoFlyway(@Qualifier("geoDataSource") DataSource dataSource,
+                            @Value("${terrapi.flyway.enabled:true}") boolean flywayEnabled) {
+        Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration/geo")
+                .baselineOnMigrate(true)
+                .load();
+        if (flywayEnabled) {
+            flyway.migrate();
+        }
+        return flyway;
+    }
+
     @Primary
     @Bean
+    @DependsOn("geoFlyway")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             EntityManagerFactoryBuilder builder,
             @Qualifier("geoDataSource") DataSource dataSource) {

@@ -23,8 +23,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc.batch_size: 50
   flyway:
-    enabled: true
-    locations: classpath:db/migration
+    enabled: false
   config:
     import: optional:file:.env[.properties]
   security:

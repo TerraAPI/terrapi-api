@@ -11,6 +11,8 @@ spring:
       ddl-auto: none
 
 terrapi:
+  flyway:
+    enabled: false
   datasource:
     platform:
       url: jdbc:h2:mem:platformdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE

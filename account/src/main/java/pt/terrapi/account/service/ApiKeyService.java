@@ -47,7 +47,7 @@ public class ApiKeyService {
     public record CreatedApiKey(String plaintext, ApiKey apiKey) {
     }
 
-    @Transactional
+    @Transactional("accountTransactionManager")
     public CreatedApiKey create(Organization organization, String label, UUID createdBy, Instant expiresAt) {
         byte[] raw = new byte[SECRET_BYTES];
         RANDOM.nextBytes(raw);
@@ -71,7 +71,7 @@ public class ApiKeyService {
      * Resolves an opaque token to an active, unexpired {@link ApiKey}, refreshing
      * {@code lastUsedAt} at most once per throttle window.
      */
-    @Transactional
+    @Transactional("accountTransactionManager")
     public Optional<ApiKey> resolve(String token) {
         Optional<ApiKey> match = apiKeyRepository.findByKeyHashAndStatus(sha256Hex(token), ApiKeyStatus.ACTIVE);
         if (match.isEmpty()) {
@@ -89,7 +89,7 @@ public class ApiKeyService {
         return Optional.of(apiKey);
     }
 
-    @Transactional
+    @Transactional("accountTransactionManager")
     public void revoke(ApiKey apiKey) {
         apiKey.setStatus(ApiKeyStatus.REVOKED);
         apiKey.setRevokedAt(Instant.now());

@@ -6,6 +6,7 @@ spring:
       # CAOP upload sends all .gpkg files in one request; Continente alone is ~180 MB.
       max-file-size: 500MB
       max-request-size: 1GB
+  # Primary datasource: the PostGIS geo database (spatial domain data).
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5445/terrapi}
     username: ${DB_USERNAME:terrapi}
@@ -37,6 +38,13 @@ terrapi:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   account:
     api-key-prefix: ${ACCOUNT_API_KEY_PREFIX:tp_live_}
+  # Secondary datasource: the account/SaaS database (plain Postgres).
+  datasource:
+    account:
+      url: ${ACCOUNT_DB_URL:jdbc:postgresql://localhost:5446/terrapi_account}
+      username: ${ACCOUNT_DB_USERNAME:terrapi}
+      password: ${ACCOUNT_DB_PASSWORD:terrapi}
+      driver-class-name: org.postgresql.Driver
   keycloak:
     admin:
       server-url: ${KEYCLOAK_ADMIN_URL:http://localhost:8081}

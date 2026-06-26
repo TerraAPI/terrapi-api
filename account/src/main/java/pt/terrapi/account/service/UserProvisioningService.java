@@ -30,7 +30,7 @@ public class UserProvisioningService {
         this.appUserRepository = appUserRepository;
     }
 
-    @Transactional
+    @Transactional("accountTransactionManager")
     public void upsertFromJwt(Jwt jwt) {
         String sub = jwt.getSubject();
         if (sub == null || seenThrottle.getIfPresent(sub) != null) {

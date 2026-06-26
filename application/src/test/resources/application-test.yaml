@@ -9,3 +9,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+terrapi:
+  datasource:
+    account:
+      url: jdbc:h2:mem:accountdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+      driver-class-name: org.h2.Driver
+      username: sa
+      password:

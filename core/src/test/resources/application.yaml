@@ -1,0 +1,9 @@
+terrapi:
+  precision:
+    ladder:
+      - lod: 0
+        tolerance: 25.0
+      - lod: 1
+        tolerance: 50.0
+      - lod: 2
+        tolerance: 200.0

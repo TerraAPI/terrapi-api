@@ -19,6 +19,7 @@
 	    <module>import</module>
         <module>web</module>
         <module>account</module>
+        <module>pipeline</module>
     </modules>
 
     <properties>

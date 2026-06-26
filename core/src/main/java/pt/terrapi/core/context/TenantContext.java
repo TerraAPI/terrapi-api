@@ -7,7 +7,7 @@ import java.util.UUID;
  * Thread-local holder for the organization (tenant) scoped to the current request.
  *
  * <p>Lives in {@code core} so {@code web}'s data services can scope and attribute usage
- * without a compile-time dependency on {@code account}. It is populated by the security
+ * without a compile-time dependency on {@code platform}. It is populated by the security
  * layer (API-key authentication) and must always be cleared at the end of the request.
  */
 public final class TenantContext {

@@ -17,8 +17,8 @@ import org.springframework.security.oauth2.server.resource.web.BearerTokenResolv
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
-import pt.terrapi.platform.config.AccountProperties;
-import pt.terrapi.platform.service.ApiKeyService;
+import pt.terrapi.platform.config.PlatformProperties;
+import pt.terrapi.platform.identity.service.ApiKeyService;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,13 +27,13 @@ import java.util.Map;
 /**
  * Single app-wide security chain. The data API ({@code /api/v1/**}) accepts either a
  * Keycloak realm JWT or an opaque API key; the console API requires a JWT plus an org
- * role. Defined in {@code account} as a servlet filter, so it applies to {@code web}'s
+ * role. Defined in {@code platform} as a servlet filter, so it applies to {@code web}'s
  * endpoints without a compile dependency.
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(AccountProperties.class)
+@EnableConfigurationProperties(PlatformProperties.class)
 public class SecurityConfig {
 
     @Bean

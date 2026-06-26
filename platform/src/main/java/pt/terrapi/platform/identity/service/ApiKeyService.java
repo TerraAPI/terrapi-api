@@ -1,14 +1,14 @@
-package pt.terrapi.platform.service;
+package pt.terrapi.platform.identity.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pt.terrapi.platform.config.AccountProperties;
-import pt.terrapi.platform.entities.ApiKey;
-import pt.terrapi.platform.entities.Organization;
-import pt.terrapi.platform.enums.ApiKeyStatus;
-import pt.terrapi.platform.repository.ApiKeyRepository;
+import pt.terrapi.platform.config.PlatformProperties;
+import pt.terrapi.platform.identity.entities.ApiKey;
+import pt.terrapi.platform.identity.entities.Organization;
+import pt.terrapi.platform.identity.enums.ApiKeyStatus;
+import pt.terrapi.platform.identity.repository.ApiKeyRepository;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -31,14 +31,14 @@ public class ApiKeyService {
     private static final Base64.Encoder BASE64 = Base64.getUrlEncoder().withoutPadding();
 
     private final ApiKeyRepository apiKeyRepository;
-    private final AccountProperties properties;
+    private final PlatformProperties properties;
 
     private final Cache<UUID, Boolean> lastUsedThrottle = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
             .maximumSize(10_000)
             .build();
 
-    public ApiKeyService(ApiKeyRepository apiKeyRepository, AccountProperties properties) {
+    public ApiKeyService(ApiKeyRepository apiKeyRepository, PlatformProperties properties) {
         this.apiKeyRepository = apiKeyRepository;
         this.properties = properties;
     }
@@ -47,7 +47,7 @@ public class ApiKeyService {
     public record CreatedApiKey(String plaintext, ApiKey apiKey) {
     }
 
-    @Transactional("accountTransactionManager")
+    @Transactional("platformTransactionManager")
     public CreatedApiKey create(Organization organization, String label, UUID createdBy, Instant expiresAt) {
         byte[] raw = new byte[SECRET_BYTES];
         RANDOM.nextBytes(raw);
@@ -71,7 +71,7 @@ public class ApiKeyService {
      * Resolves an opaque token to an active, unexpired {@link ApiKey}, refreshing
      * {@code lastUsedAt} at most once per throttle window.
      */
-    @Transactional("accountTransactionManager")
+    @Transactional("platformTransactionManager")
     public Optional<ApiKey> resolve(String token) {
         Optional<ApiKey> match = apiKeyRepository.findByKeyHashAndStatus(sha256Hex(token), ApiKeyStatus.ACTIVE);
         if (match.isEmpty()) {
@@ -89,7 +89,7 @@ public class ApiKeyService {
         return Optional.of(apiKey);
     }
 
-    @Transactional("accountTransactionManager")
+    @Transactional("platformTransactionManager")
     public void revoke(ApiKey apiKey) {
         apiKey.setStatus(ApiKeyStatus.REVOKED);
         apiKey.setRevokedAt(Instant.now());

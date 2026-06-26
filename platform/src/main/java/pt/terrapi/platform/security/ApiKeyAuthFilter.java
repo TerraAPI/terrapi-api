@@ -10,8 +10,8 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import pt.terrapi.platform.entities.ApiKey;
-import pt.terrapi.platform.service.ApiKeyService;
+import pt.terrapi.platform.identity.entities.ApiKey;
+import pt.terrapi.platform.identity.service.ApiKeyService;
 import pt.terrapi.core.context.TenantContext;
 
 import java.io.IOException;

@@ -21,7 +21,7 @@ import javax.sql.DataSource;
  *
  * <p>Marked {@code @Primary} so Spring Boot's {@link EntityManagerFactoryBuilder},
  * Flyway, and any unqualified {@link DataSource} injection resolve to the geo database.
- * Account/SaaS data lives on a separate datasource (see {@code AccountDataSourceConfig}).
+ * Platform/SaaS control-plane data lives on a separate datasource (see {@code PlatformDataSourceConfig}).
  */
 @Configuration
 @EnableJpaRepositories(

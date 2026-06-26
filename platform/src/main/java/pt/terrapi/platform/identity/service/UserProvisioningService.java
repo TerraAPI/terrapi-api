@@ -1,12 +1,12 @@
-package pt.terrapi.platform.service;
+package pt.terrapi.platform.identity.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pt.terrapi.platform.entities.AppUser;
-import pt.terrapi.platform.repository.AppUserRepository;
+import pt.terrapi.platform.identity.entities.AppUser;
+import pt.terrapi.platform.identity.repository.AppUserRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,7 +30,7 @@ public class UserProvisioningService {
         this.appUserRepository = appUserRepository;
     }
 
-    @Transactional("accountTransactionManager")
+    @Transactional("platformTransactionManager")
     public void upsertFromJwt(Jwt jwt) {
         String sub = jwt.getSubject();
         if (sub == null || seenThrottle.getIfPresent(sub) != null) {

@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import pt.terrapi.platform.service.UserProvisioningService;
+import pt.terrapi.platform.identity.service.UserProvisioningService;
 
 import java.io.IOException;
 

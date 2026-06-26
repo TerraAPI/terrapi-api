@@ -1,4 +1,4 @@
-package pt.terrapi.platform.enums;
+package pt.terrapi.platform.identity.enums;
 
 public enum OrgRole {
     OWNER,

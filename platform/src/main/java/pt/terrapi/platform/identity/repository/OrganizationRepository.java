@@ -1,7 +1,7 @@
-package pt.terrapi.platform.repository;
+package pt.terrapi.platform.identity.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import pt.terrapi.platform.entities.Organization;
+import pt.terrapi.platform.identity.entities.Organization;
 
 import java.util.Optional;
 import java.util.UUID;

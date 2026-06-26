@@ -1,8 +1,8 @@
-package pt.terrapi.platform.repository;
+package pt.terrapi.platform.identity.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import pt.terrapi.platform.entities.ApiKey;
-import pt.terrapi.platform.enums.ApiKeyStatus;
+import pt.terrapi.platform.identity.entities.ApiKey;
+import pt.terrapi.platform.identity.enums.ApiKeyStatus;
 
 import java.util.Optional;
 import java.util.UUID;

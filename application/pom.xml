@@ -16,6 +16,14 @@
             <groupId>pt.terrapi</groupId>
             <artifactId>core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>pt.terrapi</groupId>
+            <artifactId>import</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>pt.terrapi</groupId>
+            <artifactId>web</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

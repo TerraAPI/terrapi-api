@@ -17,4 +17,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>pt.terrapi</groupId>
+            <artifactId>core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>pt.terrapi</groupId>
+            <artifactId>web</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>

@@ -18,6 +18,7 @@
         <module>application</module>
 	    <module>import</module>
         <module>web</module>
+        <module>account</module>
     </modules>
 
     <properties>

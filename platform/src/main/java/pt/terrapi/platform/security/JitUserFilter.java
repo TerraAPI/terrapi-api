@@ -8,7 +8,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import pt.terrapi.platform.identity.service.UserProvisioningService;
 
@@ -18,8 +17,9 @@ import java.io.IOException;
  * Runs after the OAuth2 bearer filter: when the request carries a valid realm JWT,
  * just-in-time provisions / refreshes the matching {@code app_users} row. Provisioning
  * failures are logged but never fail the request.
+ *
+ * <p>Not a Spring bean: instantiated directly in {@code SecurityConfig} (see ApiKeyAuthFilter).
  */
-@Component
 public class JitUserFilter extends OncePerRequestFilter {
 
     private final UserProvisioningService userProvisioningService;

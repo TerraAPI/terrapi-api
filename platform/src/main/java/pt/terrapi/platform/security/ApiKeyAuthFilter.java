@@ -8,7 +8,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import pt.terrapi.platform.identity.entities.ApiKey;
 import pt.terrapi.platform.identity.service.ApiKeyService;
@@ -22,8 +21,10 @@ import java.util.Optional;
  * Authenticates opaque API keys carried as {@code Authorization: Bearer tp_live_...}.
  * Registered before the OAuth2 bearer filter; the {@code BearerTokenResolver} is
  * configured to ignore API-key tokens so they never reach the JWT decoder.
+ *
+ * <p>Not a Spring bean: instantiated directly in {@code SecurityConfig} and added to the
+ * security chain, so Spring Boot does not also auto-register it as a servlet filter.
  */
-@Component
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";

@@ -25,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestTemplate;
 import pt.terrapi.platform.config.PlatformProperties;
 import pt.terrapi.platform.identity.service.ApiKeyService;
+import pt.terrapi.platform.identity.service.UserProvisioningService;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -45,8 +46,10 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                            ApiKeyAuthFilter apiKeyAuthFilter,
-                                            JitUserFilter jitUserFilter) throws Exception {
+                                            ApiKeyService apiKeyService,
+                                            UserProvisioningService userProvisioningService) throws Exception {
+        ApiKeyAuthFilter apiKeyAuthFilter = new ApiKeyAuthFilter(apiKeyService);
+        JitUserFilter jitUserFilter = new JitUserFilter(userProvisioningService);
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())

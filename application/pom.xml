@@ -18,7 +18,7 @@
         </dependency>
         <dependency>
             <groupId>pt.terrapi</groupId>
-            <artifactId>import</artifactId>
+            <artifactId>pipeline</artifactId>
         </dependency>
         <dependency>
             <groupId>pt.terrapi</groupId>

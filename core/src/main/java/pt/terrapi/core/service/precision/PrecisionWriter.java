@@ -4,9 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pt.terrapi.terrapi_api.config.LodLevel;
-import pt.terrapi.terrapi_api.config.PrecisionProperties;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.config.LodLevel;
+import pt.terrapi.core.config.PrecisionProperties;
+import pt.terrapi.core.enums.GeoUnitType;
 
 import java.util.List;
 import java.util.Locale;
@@ -24,7 +24,7 @@ import java.util.UUID;
  * coincides with its municipality / district / NUTS boundary at every LOD).
  *
  * <p>The classified border line network ({@code border_segments}) is simplified independently per
- * arc ({@code ST_SimplifyPreserveTopology}) at the same tolerance — it carries edge-level semantics
+ * arc ({@code ST_SimplifyPreserveTopology}) at the same tolerance вЂ” it carries edge-level semantics
  * not derivable from the polygon dissolve.
  *
  * <p>Generation is always the full hierarchy; only the LOD scope can be narrowed. The CAOP parish
@@ -182,7 +182,7 @@ public class PrecisionWriter {
         int totalUnits = allUnitsCount();
         if (!isHealthy(validation, totalUnits, totalLods)) {
             throw new GenerationFailedException(
-                    "Generation " + generationId + " unhealthy — rows=" + validation.totalRows
+                    "Generation " + generationId + " unhealthy вЂ” rows=" + validation.totalRows
                             + " null=" + pct(validation.nullCount, validation.totalRows) + "%"
                             + " invalid=" + pct(validation.invalidCount, validation.totalRows) + "%"
                             + " empty=" + pct(validation.emptyCount, validation.totalRows) + "%");

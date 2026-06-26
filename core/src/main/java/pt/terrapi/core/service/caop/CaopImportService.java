@@ -14,18 +14,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.dto.ImportResult;
-import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.service.caop.CaopGpkgReader.GpkgData;
+import pt.terrapi.core.dto.GenerationResult;
+import pt.terrapi.core.dto.ImportResult;
+import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GenerationStatus;
+import pt.terrapi.core.enums.GeoUnitType;
+import pt.terrapi.core.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.core.service.precision.PrecisionGenerationService;
 
 /**
- * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) → write to PostGIS
- * ({@link GeoUnitWriter}) → verify ({@link ImportVerifier}) → derive ({@link GeoDerivationService})
- * → asynchronously regenerate precisions.
+ * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) в†’ write to PostGIS
+ * ({@link GeoUnitWriter}) в†’ verify ({@link ImportVerifier}) в†’ derive ({@link GeoDerivationService})
+ * в†’ asynchronously regenerate precisions.
  */
 @Slf4j
 @Service
@@ -70,7 +70,7 @@ public class CaopImportService {
             importFile(file.getAbsolutePath(), codesByType);
         }
         ImportResult result = distinctResult(codesByType);
-        log.info("Import finished — {}", result.counts());
+        log.info("Import finished вЂ” {}", result.counts());
 
         finalizeImport(codesByType);
         return result;
@@ -89,7 +89,7 @@ public class CaopImportService {
     }
 
     /**
-     * Verify (loudly — a thrown check rolls the import back), then derive and trigger precision
+     * Verify (loudly вЂ” a thrown check rolls the import back), then derive and trigger precision
      * regeneration. Integrity is checked before derivation so a corrupt import fails fast.
      */
     private void finalizeImport(Map<GeoUnitType, Set<String>> codesByType) {

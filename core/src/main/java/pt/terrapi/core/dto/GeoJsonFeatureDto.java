@@ -2,7 +2,7 @@ package pt.terrapi.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonRawValue;
 import io.swagger.v3.oas.annotations.media.Schema;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.enums.GeoUnitType;
 
 @Schema(description = "GeoJSON Feature representing a geographic unit boundary")
 public record GeoJsonFeatureDto(

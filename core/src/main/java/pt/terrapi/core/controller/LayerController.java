@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.service.LayerService;
+import pt.terrapi.core.enums.GeoUnitType;
+import pt.terrapi.core.service.LayerService;
 
 @RestController
 @RequestMapping("/api/v1/layers")

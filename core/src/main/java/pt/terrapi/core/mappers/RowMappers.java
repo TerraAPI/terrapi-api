@@ -5,9 +5,9 @@ import java.sql.SQLException;
 import java.util.Map;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.WKBReader;
-import pt.terrapi.terrapi_api.entities.BorderSegment;
-import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.entities.BorderSegment;
+import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
 
 public final class RowMappers {
 
@@ -16,7 +16,7 @@ public final class RowMappers {
     /**
      * Prefix applied to the statistical (NUTS) code namespace. CAOP's raw NUTS {@code codigo}
      * values (e.g. {@code 11}, {@code 15}) collide with administrative district {@code dt}
-     * codes (Lisboa {@code 11}, Setúbal {@code 15}) in the single global {@code geo_units.code}
+     * codes (Lisboa {@code 11}, SetГєbal {@code 15}) in the single global {@code geo_units.code}
      * primary key. Prefixing NUTS codes with {@code PT} (the Eurostat NUTS root for Portugal)
      * makes them globally unique without overlapping any all-numeric administrative code.
      * The same prefix is applied to {@code nuts3_code} on municipalities/parishes so the

@@ -2,11 +2,11 @@ package pt.terrapi.core.mappers;
 
 import java.util.List;
 import org.locationtech.jts.geom.Point;
-import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
-import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.dto.GeoUnitDetailsDto;
+import pt.terrapi.core.dto.GeoUnitSummaryDto;
+import pt.terrapi.core.dto.GeoUnitSummaryProjection;
+import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
 
 public final class GeoUnitMapper {
 

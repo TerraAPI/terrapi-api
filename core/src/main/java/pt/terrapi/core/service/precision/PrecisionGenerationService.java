@@ -3,11 +3,11 @@ package pt.terrapi.core.service.precision;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import pt.terrapi.terrapi_api.dto.GenerationResult;
-import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
-import pt.terrapi.terrapi_api.enums.GenerationStatus;
-import pt.terrapi.terrapi_api.repository.PrecisionGenerationRepository;
-import pt.terrapi.terrapi_api.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.core.dto.GenerationResult;
+import pt.terrapi.core.entities.PrecisionGeneration;
+import pt.terrapi.core.enums.GenerationStatus;
+import pt.terrapi.core.repository.PrecisionGenerationRepository;
+import pt.terrapi.core.service.precision.PrecisionWriter.WriteResult;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -50,7 +50,7 @@ public class PrecisionGenerationService {
             gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                     result.totalUnits(), result.totalLods());
             generationRepository.save(gen);
-            log.info("Generation {} SUCCESS — {} rows in {} ms",
+            log.info("Generation {} SUCCESS вЂ” {} rows in {} ms",
                     generationId, result.rowCount(), System.currentTimeMillis() - t0);
             return new GenerationResult(generationId, GenerationStatus.SUCCESS, result.rowCount());
         } catch (Exception e) {

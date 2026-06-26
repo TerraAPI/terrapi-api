@@ -2,7 +2,7 @@ package pt.terrapi.core.converters;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.enums.GeoUnitType;
 
 @Converter(autoApply = true)
 public class GeoUnitTypeConverter implements AttributeConverter<GeoUnitType, Integer> {

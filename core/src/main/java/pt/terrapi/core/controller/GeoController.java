@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeRequest;
-import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeResult;
-import pt.terrapi.terrapi_api.dto.ContainsResponse;
-import pt.terrapi.terrapi_api.dto.GeoJsonFeatureDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
+import pt.terrapi.core.dto.BatchReverseGeocodeRequest;
+import pt.terrapi.core.dto.BatchReverseGeocodeResult;
+import pt.terrapi.core.dto.ContainsResponse;
+import pt.terrapi.core.dto.GeoJsonFeatureDto;
+import pt.terrapi.core.dto.GeoUnitSummaryDto;
+import pt.terrapi.core.enums.GeoUnitType;
+import pt.terrapi.core.service.GeoUnitQueryService;
 
 @RestController
 @RequestMapping("/api/v1/geo")

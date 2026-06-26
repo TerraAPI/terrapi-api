@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.service.osm.IsochroneService;
+import pt.terrapi.core.service.osm.IsochroneService;
 
 @RestController
 @RequestMapping("/api/v1/isochrone")

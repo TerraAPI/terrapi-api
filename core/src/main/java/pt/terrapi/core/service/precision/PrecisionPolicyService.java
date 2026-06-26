@@ -2,8 +2,8 @@ package pt.terrapi.core.service.precision;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import pt.terrapi.terrapi_api.config.LodLevel;
-import pt.terrapi.terrapi_api.config.PrecisionProperties;
+import pt.terrapi.core.config.LodLevel;
+import pt.terrapi.core.config.PrecisionProperties;
 
 import java.util.List;
 

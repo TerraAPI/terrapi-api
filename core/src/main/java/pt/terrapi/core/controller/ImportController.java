@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import pt.terrapi.terrapi_api.dto.ImportResult;
-import pt.terrapi.terrapi_api.service.caop.CaopImportService;
-import pt.terrapi.terrapi_api.service.osm.OsmImportService;
+import pt.terrapi.core.dto.ImportResult;
+import pt.terrapi.core.service.caop.CaopImportService;
+import pt.terrapi.core.service.osm.OsmImportService;
 
 import java.io.IOException;
 import java.nio.file.Files;

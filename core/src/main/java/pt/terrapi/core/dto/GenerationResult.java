@@ -1,6 +1,6 @@
 package pt.terrapi.core.dto;
 
-import pt.terrapi.terrapi_api.enums.GenerationStatus;
+import pt.terrapi.core.enums.GenerationStatus;
 
 import java.util.UUID;
 

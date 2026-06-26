@@ -9,18 +9,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeRequest;
-import pt.terrapi.terrapi_api.dto.BatchReverseGeocodeResult;
-import pt.terrapi.terrapi_api.dto.ContainsResponse;
-import pt.terrapi.terrapi_api.dto.GeoJsonFeatureDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.PagedResponse;
-import pt.terrapi.terrapi_api.dto.PointDto;
-import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.mappers.GeoUnitMapper;
-import pt.terrapi.terrapi_api.repository.GeoUnitRepository;
+import pt.terrapi.core.dto.BatchReverseGeocodeRequest;
+import pt.terrapi.core.dto.BatchReverseGeocodeResult;
+import pt.terrapi.core.dto.ContainsResponse;
+import pt.terrapi.core.dto.GeoJsonFeatureDto;
+import pt.terrapi.core.dto.GeoUnitDetailsDto;
+import pt.terrapi.core.dto.GeoUnitSummaryDto;
+import pt.terrapi.core.dto.PagedResponse;
+import pt.terrapi.core.dto.PointDto;
+import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
+import pt.terrapi.core.mappers.GeoUnitMapper;
+import pt.terrapi.core.repository.GeoUnitRepository;
 
 @Service
 @RequiredArgsConstructor

@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.dto.GeoUnitDetailsDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.PagedResponse;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
-import pt.terrapi.terrapi_api.service.GeoUnitQueryService;
+import pt.terrapi.core.dto.GeoUnitDetailsDto;
+import pt.terrapi.core.dto.GeoUnitSummaryDto;
+import pt.terrapi.core.dto.PagedResponse;
+import pt.terrapi.core.enums.GeoUnitType;
+import pt.terrapi.core.service.GeoUnitQueryService;
 
 @RestController
 @RequiredArgsConstructor

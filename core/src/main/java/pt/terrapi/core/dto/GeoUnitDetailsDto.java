@@ -1,7 +1,7 @@
 package pt.terrapi.core.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.enums.GeoUnitType;
 
 @Schema(description = "Geographic unit")
 public record GeoUnitDetailsDto(

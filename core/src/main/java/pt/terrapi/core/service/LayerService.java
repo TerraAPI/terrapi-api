@@ -9,7 +9,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.enums.GeoUnitType;
 
 /**
  * Builds whole-layer ("grid") GeoJSON FeatureCollections for a {@link GeoUnitType} at a given LOD,

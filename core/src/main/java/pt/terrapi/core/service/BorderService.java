@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
  * FeatureCollection, optionally filtered by border order (level). Geometry is always served from
  * {@code border_segment_precisions} (independently line-simplified per LOD, the same ladder as the
  * layers; LOD 0 = most detailed, 2 = coarsest). The full-detail {@code border_segments} are never
- * dumped wholesale — they exist only for derivation and spatial-correctness queries.
+ * dumped wholesale вЂ” they exist only for derivation and spatial-correctness queries.
  */
 @Slf4j
 @Service

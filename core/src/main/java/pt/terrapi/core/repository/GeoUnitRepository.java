@@ -7,10 +7,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto;
-import pt.terrapi.terrapi_api.dto.GeoUnitSummaryProjection;
-import pt.terrapi.terrapi_api.entities.GeoUnit;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.dto.GeoUnitSummaryDto;
+import pt.terrapi.core.dto.GeoUnitSummaryProjection;
+import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
 
 public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
 
@@ -21,7 +21,7 @@ public interface GeoUnitRepository extends JpaRepository<GeoUnit, String> {
      * on the parent and therefore already guarantees one).
      */
     String SUMMARY_PROJECTION = """
-            SELECT new pt.terrapi.terrapi_api.dto.GeoUnitSummaryDto(
+            SELECT new pt.terrapi.core.dto.GeoUnitSummaryDto(
                 gu.code,
                 COALESCE(gu.simplifiedName, gu.name),
                 gu.type,

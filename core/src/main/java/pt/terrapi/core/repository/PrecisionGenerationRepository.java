@@ -1,7 +1,7 @@
 package pt.terrapi.core.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import pt.terrapi.terrapi_api.entities.PrecisionGeneration;
+import pt.terrapi.core.entities.PrecisionGeneration;
 
 import java.util.Optional;
 import java.util.UUID;

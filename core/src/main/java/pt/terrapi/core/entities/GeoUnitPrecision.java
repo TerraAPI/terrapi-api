@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.locationtech.jts.geom.Geometry;
-import pt.terrapi.terrapi_api.enums.GeoUnitType;
+import pt.terrapi.core.enums.GeoUnitType;
 
 import java.time.Instant;
 import java.util.UUID;

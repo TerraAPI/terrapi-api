@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pt.terrapi.terrapi_api.service.BorderService;
+import pt.terrapi.core.service.BorderService;
 
 @RestController
 @RequestMapping("/api/v1/borders")

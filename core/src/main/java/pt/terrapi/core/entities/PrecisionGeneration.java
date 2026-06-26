@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
-import pt.terrapi.terrapi_api.enums.GenerationStatus;
+import pt.terrapi.core.enums.GenerationStatus;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import pt.terrapi.terrapi_api.config.ValhallaProperties;
+import pt.terrapi.core.config.ValhallaProperties;
 
 /**
  * Computes isochrones by delegating to the Valhalla routing service ({@code /isochrone}).

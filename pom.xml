@@ -17,7 +17,7 @@
         <module>core</module>
         <module>application</module>
         <module>web</module>
-        <module>account</module>
+        <module>platform</module>
         <module>pipeline</module>
     </modules>
 
@@ -53,7 +53,7 @@
             </dependency>
             <dependency>
                 <groupId>pt.terrapi</groupId>
-                <artifactId>account</artifactId>
+                <artifactId>platform</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

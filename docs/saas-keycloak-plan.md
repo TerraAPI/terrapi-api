@@ -35,7 +35,7 @@ without a `web -> account` dependency. The `SecurityFilterChain` defined in `acc
 applies app-wide because it is a servlet filter in the shared Spring context (no
 compile dependency from `web` is required).
 
-## Domain model (new entities, `pt.terrapi.account.entities`, Lombok like `GeoUnit`)
+## Domain model (new entities, `pt.terrapi.platform.entities`, Lombok like `GeoUnit`)
 
 > Terminology: "client" is overloaded. In Keycloak a *client* = an app/credential;
 > in SaaS a *client* = the customer. The customer is modelled as an **Organization**.
@@ -134,7 +134,7 @@ A `HandlerInterceptor` on billable `/api/v1/**`:
 ## Wiring changes (must-do)
 
 - `JpaConfig`: `@EnableJpaRepositories` currently pins `pt.terrapi.core.repository`.
-  **Broaden to `pt.terrapi`** (or add `pt.terrapi.account.repository`) or it will not
+  **Broaden to `pt.terrapi`** (or add `pt.terrapi.platform.repository`) or it will not
   see the account repos. Entity auto-scan from `pt.terrapi` already covers account.
 - `application.yaml`: add `spring.security.oauth2.resourceserver.jwt.issuer-uri`,
   Keycloak admin (`url` / `realm` / `client` / `secret`), Stripe (`secret-key`,

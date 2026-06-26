@@ -9,7 +9,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import pt.terrapi.platform.identity.entities.ApiKey;
 import pt.terrapi.platform.identity.service.ApiKeyService;
 import pt.terrapi.core.context.TenantContext;
 
@@ -45,15 +44,15 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        Optional<ApiKey> resolved = apiKeyService.resolve(token);
+        Optional<ApiKeyService.ResolvedApiKey> resolved = apiKeyService.resolve(token);
         if (resolved.isEmpty()) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid API key");
             return;
         }
 
-        ApiKey apiKey = resolved.get();
+        ApiKeyService.ResolvedApiKey apiKey = resolved.get();
         ApiKeyPrincipal principal = new ApiKeyPrincipal(
-                apiKey.getOrganization().getId(), apiKey.getId(), apiKey.getLabel());
+                apiKey.organizationId(), apiKey.apiKeyId(), apiKey.label());
         ApiKeyAuthenticationToken authentication = new ApiKeyAuthenticationToken(principal, List.of(
                 new SimpleGrantedAuthority("ROLE_API_KEY"),
                 new SimpleGrantedAuthority("SCOPE_data")));

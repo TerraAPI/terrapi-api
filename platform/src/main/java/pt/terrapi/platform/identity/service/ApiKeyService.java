@@ -38,6 +38,16 @@ public class ApiKeyService {
             .maximumSize(10_000)
             .build();
 
+    /**
+     * Caches token-hash -> resolution (positives and negatives) for a short window so the
+     * data API does not hit the platform DB on every request. Cross-instance revocation lag
+     * is bounded by this TTL; {@link #revoke} invalidates locally on the spot.
+     */
+    private final Cache<String, Optional<ResolvedApiKey>> resolveCache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofSeconds(30))
+            .maximumSize(10_000)
+            .build();
+
     public ApiKeyService(ApiKeyRepository apiKeyRepository, PlatformProperties properties) {
         this.apiKeyRepository = apiKeyRepository;
         this.properties = properties;
@@ -45,6 +55,10 @@ public class ApiKeyService {
 
     /** Result of creating a key: the full plaintext is returned once and never stored. */
     public record CreatedApiKey(String plaintext, ApiKey apiKey) {
+    }
+
+    /** Immutable, cacheable snapshot of a resolved key (no JPA/session coupling). */
+    public record ResolvedApiKey(UUID apiKeyId, UUID organizationId, String label, Instant expiresAt) {
     }
 
     @Transactional("platformTransactionManager")
@@ -68,25 +82,36 @@ public class ApiKeyService {
     }
 
     /**
-     * Resolves an opaque token to an active, unexpired {@link ApiKey}, refreshing
+     * Resolves an opaque token to an active, unexpired key snapshot. Served from a short-TTL
+     * cache (positives and negatives) to avoid a platform-DB read per request; refreshes
      * {@code lastUsedAt} at most once per throttle window.
      */
-    @Transactional("platformTransactionManager")
-    public Optional<ApiKey> resolve(String token) {
-        Optional<ApiKey> match = apiKeyRepository.findByKeyHashAndStatus(sha256Hex(token), ApiKeyStatus.ACTIVE);
-        if (match.isEmpty()) {
+    public Optional<ResolvedApiKey> resolve(String token) {
+        String hash = sha256Hex(token);
+        Optional<ResolvedApiKey> resolved = resolveCache.get(hash, this::loadSnapshot);
+        if (resolved.isEmpty()) {
             return Optional.empty();
         }
-        ApiKey apiKey = match.get();
-        Instant now = Instant.now();
-        if (apiKey.getExpiresAt() != null && now.isAfter(apiKey.getExpiresAt())) {
+        ResolvedApiKey snapshot = resolved.get();
+        if (snapshot.expiresAt() != null && Instant.now().isAfter(snapshot.expiresAt())) {
+            resolveCache.invalidate(hash);
             return Optional.empty();
         }
-        if (lastUsedThrottle.getIfPresent(apiKey.getId()) == null) {
-            apiKey.setLastUsedAt(now);
-            lastUsedThrottle.put(apiKey.getId(), Boolean.TRUE);
+        touchLastUsed(snapshot.apiKeyId());
+        return resolved;
+    }
+
+    private Optional<ResolvedApiKey> loadSnapshot(String keyHash) {
+        return apiKeyRepository.findByKeyHashAndStatus(keyHash, ApiKeyStatus.ACTIVE)
+                .map(key -> new ResolvedApiKey(
+                        key.getId(), key.getOrganization().getId(), key.getLabel(), key.getExpiresAt()));
+    }
+
+    private void touchLastUsed(UUID apiKeyId) {
+        if (lastUsedThrottle.getIfPresent(apiKeyId) == null) {
+            lastUsedThrottle.put(apiKeyId, Boolean.TRUE);
+            apiKeyRepository.updateLastUsedAt(apiKeyId, Instant.now());
         }
-        return Optional.of(apiKey);
     }
 
     @Transactional("platformTransactionManager")
@@ -94,6 +119,7 @@ public class ApiKeyService {
         apiKey.setStatus(ApiKeyStatus.REVOKED);
         apiKey.setRevokedAt(Instant.now());
         apiKeyRepository.save(apiKey);
+        resolveCache.invalidate(apiKey.getKeyHash());
     }
 
     public boolean isApiKeyToken(String token) {

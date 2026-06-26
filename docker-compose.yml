@@ -11,6 +11,45 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/
 
+  keycloak-db:
+    image: postgres:18-alpine
+    container_name: terrapi-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - kcdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.3
+    container_name: terrapi-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      # Host 8081 maps to Keycloak's HTTP 8080 so the issuer is
+      # http://localhost:8081/realms/terrapi (matches the resource-server issuer-uri).
+      - "8081:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    restart: unless-stopped
+
   valhalla:
     image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
     container_name: terrapi-valhalla
@@ -25,3 +64,4 @@ services:
 
 volumes:
   pgdata:
+  kcdata:

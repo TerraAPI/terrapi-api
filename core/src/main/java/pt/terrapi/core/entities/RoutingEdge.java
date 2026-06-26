@@ -13,7 +13,7 @@ import org.locationtech.jts.geom.LineString;
  * Read-only view of a routable OSM highway edge in the {@code routing_edges} table.
  *
  * <p>The table is created and owned by osm2pgsql (see {@code osm/routing-edges.lua}); this entity
- * only maps it for querying, hence {@link Immutable} — the application never writes edges. Column
+ * only maps it for querying, hence {@link Immutable} - the application never writes edges. Column
  * types mirror the Lua style exactly so Hibernate ({@code ddl-auto: update}) never alters the table.
  * No index is declared on {@code geom}; osm2pgsql owns the GIST index.
  */

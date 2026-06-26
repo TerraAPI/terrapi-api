@@ -12,9 +12,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  * the response body, instead of a bare 500 whose detail only reaches the server logs.
  *
  * <ul>
- *   <li>{@link IllegalArgumentException} — bad input (missing/too many files, bad path) → 400.</li>
- *   <li>{@link MaxUploadSizeExceededException} — upload over the configured limit → 413.</li>
- *   <li>{@link IllegalStateException} — import/tool failure (e.g. the osm2pgsql tail) → 500.</li>
+ *   <li>{@link IllegalArgumentException} - bad input (missing/too many files, bad path) → 400.</li>
+ *   <li>{@link MaxUploadSizeExceededException} - upload over the configured limit → 413.</li>
+ *   <li>{@link IllegalStateException} - import/tool failure (e.g. the osm2pgsql tail) → 500.</li>
  * </ul>
  *
  * <p>Deliberately scoped to these types so Spring's own request-binding exceptions (type
@@ -34,7 +34,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTooLarge(MaxUploadSizeExceededException e) {
-        log.warn("Upload rejected — over size limit: {}", e.getMessage());
+        log.warn("Upload rejected - over size limit: {}", e.getMessage());
         return build(HttpStatus.PAYLOAD_TOO_LARGE, "Uploaded file exceeds the configured size limit.");
     }
 

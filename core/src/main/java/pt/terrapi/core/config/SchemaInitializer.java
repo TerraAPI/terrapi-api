@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * {@code geo_unit_adjacency} helper table (not a JPA entity) and the spatial/lookup indexes on
  * the geometry tables.
  *
- * <p>Runs as an {@link ApplicationRunner} — i.e. after Hibernate has created/updated the entity
+ * <p>Runs as an {@link ApplicationRunner} - i.e. after Hibernate has created/updated the entity
  * tables. A Flyway migration can't create these indexes because Flyway runs before
  * {@code ddl-auto}. Every statement is idempotent and executed independently, so one failure
  * (e.g. on a non-PostGIS database) does not skip the rest.
@@ -54,7 +54,7 @@ public class SchemaInitializer implements ApplicationRunner {
             try {
                 jdbcTemplate.execute(sql);
             } catch (Exception e) {
-                log.warn("Schema init statement failed (continuing): {} — {}",
+                log.warn("Schema init statement failed (continuing): {} - {}",
                         sql.lines().findFirst().orElse(sql).trim(), e.getMessage());
             }
         }

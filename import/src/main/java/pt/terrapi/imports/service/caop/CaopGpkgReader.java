@@ -126,11 +126,11 @@ public class CaopGpkgReader {
                 .filter(b -> "COAST".equals(b.getLineType()) || "WATER".equals(b.getLineType()))
                 .count();
         if (unparseableLevel > 0) {
-            log.warn("{}: {}/{} border arcs have an unparseable admin level — check "
+            log.warn("{}: {}/{} border arcs have an unparseable admin level - check "
                     + "nivel_limite_admin wording", table, unparseableLevel, borders.size());
         }
         if (coastalOrWater == 0) {
-            log.warn("{}: 0 of {} border arcs classified as COAST/WATER — significado_linha wording "
+            log.warn("{}: 0 of {} border arcs classified as COAST/WATER - significado_linha wording "
                     + "may have changed and parseLineType silently defaulted everything to LAND",
                     table, borders.size());
         }

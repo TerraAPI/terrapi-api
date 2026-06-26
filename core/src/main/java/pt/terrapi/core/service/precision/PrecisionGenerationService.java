@@ -44,7 +44,7 @@ public class PrecisionGenerationService {
             gen.updateCounters(result.rowCount(), result.nullCount(), result.invalidCount(),
                     result.totalUnits(), result.totalLods());
             generationRepository.save(gen);
-            log.info("Generation {} SUCCESS — {} rows in {} ms",
+            log.info("Generation {} SUCCESS - {} rows in {} ms",
                     generationId, result.rowCount(), System.currentTimeMillis() - t0);
             return new GenerationResult(generationId, GenerationStatus.SUCCESS, result.rowCount());
         } catch (Exception e) {

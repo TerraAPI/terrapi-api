@@ -70,7 +70,7 @@ public class CaopImportService {
             importFile(file.getAbsolutePath(), codesByType);
         }
         ImportResult result = distinctResult(codesByType);
-        log.info("Import finished — {}", result.counts());
+        log.info("Import finished - {}", result.counts());
 
         finalizeImport(codesByType);
         return result;
@@ -89,7 +89,7 @@ public class CaopImportService {
     }
 
     /**
-     * Verify (loudly — a thrown check rolls the import back), then derive and trigger precision
+     * Verify (loudly - a thrown check rolls the import back), then derive and trigger precision
      * regeneration. Integrity is checked before derivation so a corrupt import fails fast.
      */
     private void finalizeImport(Map<GeoUnitType, Set<String>> codesByType) {

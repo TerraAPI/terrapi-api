@@ -18,9 +18,9 @@ public class OsmProperties {
     private String styleResource = "osm/routing-edges.lua";
 
     /**
-     * Slim mode. {@code false} (default) keeps the middle in RAM — faster, but needs several GB of
+     * Slim mode. {@code false} (default) keeps the middle in RAM - faster, but needs several GB of
      * memory; best for dev and full reimports. {@code true} stores the middle on disk
-     * ({@code --slim --drop --flat-nodes}) — memory-gentle for constrained hosts, but slower.
+     * ({@code --slim --drop --flat-nodes}) - memory-gentle for constrained hosts, but slower.
      */
     private boolean slim = false;
 

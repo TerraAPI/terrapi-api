@@ -51,6 +51,11 @@
                 <artifactId>web</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>pt.terrapi</groupId>
+                <artifactId>account</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

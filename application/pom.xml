@@ -24,6 +24,10 @@
             <groupId>pt.terrapi</groupId>
             <artifactId>web</artifactId>
         </dependency>
+        <dependency>
+            <groupId>pt.terrapi</groupId>
+            <artifactId>account</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

@@ -21,9 +21,9 @@ public class GeoUnitWriter {
 
     /**
      * Upsert used by the full rebuild: a conflicting code <em>unions</em> the geometries and
-     * <em>sums</em> the disjoint scalar attributes, so an entity split across files вЂ” the Azores
+     * <em>sums</em> the disjoint scalar attributes, so an entity split across files — the Azores
      * NUTS levels, whose {@code codigo} appears (partially) in both the Western and the
-     * Central+Eastern GeoPackages вЂ” is reassembled into one complete unit instead of one half
+     * Central+Eastern GeoPackages — is reassembled into one complete unit instead of one half
      * silently overwriting the other. Idempotent for geometry ({@code ST_Union} of a fragment
      * already contained is a no-op); the rebuild starts from an empty table
      * ({@link #clearGeoUnits()}), so the scalar sums never double-count.
@@ -69,7 +69,7 @@ public class GeoUnitWriter {
 
     /**
      * Empties {@code geo_units} ahead of a full rebuild. Safe to call: no other table holds a
-     * foreign key to it вЂ” {@code geo_unit_precisions} and {@code geo_unit_adjacency} store the
+     * foreign key to it — {@code geo_unit_precisions} and {@code geo_unit_adjacency} store the
      * code as a plain column and are regenerated after the import. Clearing first lets the
      * merge-mode upsert sum attributes without double-counting across re-imports.
      */

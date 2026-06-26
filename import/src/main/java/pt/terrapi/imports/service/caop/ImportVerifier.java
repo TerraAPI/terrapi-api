@@ -13,7 +13,7 @@ import pt.terrapi.core.enums.GeoUnitType;
 /**
  * Post-import integrity gate. Runs inside the import transaction, so any thrown check rolls the
  * whole import back rather than letting it commit silently corrupt. Validates: geometry SRID and
- * bounds; completeness (every source unit persisted under its own type вЂ” catches code collisions
+ * bounds; completeness (every source unit persisted under its own type — catches code collisions
  * and overwrites); and referential integrity (no dangling/missing parents, resolvable nuts3_code).
  */
 @Slf4j
@@ -33,7 +33,7 @@ public class ImportVerifier {
      * Fails loudly unless every {@code (type, code)} produced by the reader is present in
      * {@code geo_units} <em>with that type</em>. A code collision across types (e.g. district
      * {@code 11} vs NUTS2 {@code 11}) or any last-write-wins overwrite leaves a code stored under
-     * the wrong type вЂ” this catches it and aborts instead of shipping a half-loaded layer.
+     * the wrong type — this catches it and aborts instead of shipping a half-loaded layer.
      */
     public void verifyCompleteness(Map<GeoUnitType, Set<String>> codesByType) {
         List<String> problems = new ArrayList<>();
@@ -54,7 +54,7 @@ public class ImportVerifier {
             });
             if (present != codes.length) {
                 problems.add(type + ": expected " + codes.length + " units but only " + present
-                        + " present with that type (code collision or overwrite вЂ” "
+                        + " present with that type (code collision or overwrite — "
                         + (codes.length - present) + " lost)");
             }
         }
@@ -86,7 +86,7 @@ public class ImportVerifier {
                 Long.class);
         if (orphans != null && orphans > 0) {
             throw new IllegalStateException(orphans + " municipality/parish/NUTS2/NUTS3 units have no "
-                    + "parent_code вЂ” a parent name failed to resolve (CAOP naming/encoding mismatch)");
+                    + "parent_code — a parent name failed to resolve (CAOP naming/encoding mismatch)");
         }
 
         Long badNuts3 = jdbcTemplate.queryForObject("""
@@ -116,7 +116,7 @@ public class ImportVerifier {
                 "SELECT COUNT(*) FROM geo_units WHERE geometry IS NULL OR ST_IsEmpty(geometry)",
                 Long.class);
         if (missingGeometry != null && missingGeometry > 0) {
-            log.warn("{} units have null/empty geometry вЂ” they will be skipped by precision generation",
+            log.warn("{} units have null/empty geometry — they will be skipped by precision generation",
                     missingGeometry);
         }
 
@@ -136,7 +136,7 @@ public class ImportVerifier {
                 log.warn("  Suspicious centroid: code={} lon={} lat={}",
                         row.get("code"), row.get("lon"), row.get("lat"));
             }
-            log.warn("{} units have centroids outside Portugal range (lon -35..-6, lat 30..45) вЂ” "
+            log.warn("{} units have centroids outside Portugal range (lon -35..-6, lat 30..45) — "
                     + "check source CRS", outOfBounds.size());
         }
 

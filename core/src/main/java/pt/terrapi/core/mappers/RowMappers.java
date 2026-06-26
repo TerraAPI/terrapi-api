@@ -16,7 +16,7 @@ public final class RowMappers {
     /**
      * Prefix applied to the statistical (NUTS) code namespace. CAOP's raw NUTS {@code codigo}
      * values (e.g. {@code 11}, {@code 15}) collide with administrative district {@code dt}
-     * codes (Lisboa {@code 11}, SetГєbal {@code 15}) in the single global {@code geo_units.code}
+     * codes (Lisboa {@code 11}, Setúbal {@code 15}) in the single global {@code geo_units.code}
      * primary key. Prefixing NUTS codes with {@code PT} (the Eurostat NUTS root for Portugal)
      * makes them globally unique without overlapping any all-numeric administrative code.
      * The same prefix is applied to {@code nuts3_code} on municipalities/parishes so the

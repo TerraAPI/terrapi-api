@@ -27,7 +27,7 @@ import pt.terrapi.core.dto.ImportResult;
  * runs synchronously and fails loudly (non-zero exit code or zero rows both raise). Defaults to the
  * fast non-slim mode (in-RAM middle); set {@code terrapi.osm.slim=true} for memory-constrained hosts.
  * The {@code routing_edges} table is owned by osm2pgsql. Note: isochrones are served by Valhalla,
- * which reads the pbf directly вЂ” this table is kept only for querying the road network in PostGIS.
+ * which reads the pbf directly — this table is kept only for querying the road network in PostGIS.
  */
 @Slf4j
 @Service
@@ -83,9 +83,9 @@ public class OsmImportService {
             ImportResult result = countByHighway();
             if (result.total() == 0) {
                 throw new IllegalStateException(
-                        "osm2pgsql finished but routing_edges is empty вЂ” import failed.");
+                        "osm2pgsql finished but routing_edges is empty — import failed.");
             }
-            log.info("OSM import finished вЂ” {} edges in {} ms",
+            log.info("OSM import finished — {} edges in {} ms",
                     result.total(), System.currentTimeMillis() - t0);
             return result;
         } catch (IOException e) {

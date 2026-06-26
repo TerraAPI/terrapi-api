@@ -34,7 +34,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTooLarge(MaxUploadSizeExceededException e) {
-        log.warn("Upload rejected вЂ” over size limit: {}", e.getMessage());
+        log.warn("Upload rejected — over size limit: {}", e.getMessage());
         return build(HttpStatus.PAYLOAD_TOO_LARGE, "Uploaded file exceeds the configured size limit.");
     }
 

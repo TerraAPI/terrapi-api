@@ -23,9 +23,9 @@ import pt.terrapi.imports.service.caop.CaopGpkgReader.GpkgData;
 import pt.terrapi.core.service.precision.PrecisionGenerationService;
 
 /**
- * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) в†’ write to PostGIS
- * ({@link GeoUnitWriter}) в†’ verify ({@link ImportVerifier}) в†’ derive ({@link GeoDerivationService})
- * в†’ asynchronously regenerate precisions.
+ * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) → write to PostGIS
+ * ({@link GeoUnitWriter}) → verify ({@link ImportVerifier}) → derive ({@link GeoDerivationService})
+ * → asynchronously regenerate precisions.
  */
 @Slf4j
 @Service
@@ -70,7 +70,7 @@ public class CaopImportService {
             importFile(file.getAbsolutePath(), codesByType);
         }
         ImportResult result = distinctResult(codesByType);
-        log.info("Import finished вЂ” {}", result.counts());
+        log.info("Import finished — {}", result.counts());
 
         finalizeImport(codesByType);
         return result;
@@ -89,7 +89,7 @@ public class CaopImportService {
     }
 
     /**
-     * Verify (loudly вЂ” a thrown check rolls the import back), then derive and trigger precision
+     * Verify (loudly — a thrown check rolls the import back), then derive and trigger precision
      * regeneration. Integrity is checked before derivation so a corrupt import fails fast.
      */
     private void finalizeImport(Map<GeoUnitType, Set<String>> codesByType) {

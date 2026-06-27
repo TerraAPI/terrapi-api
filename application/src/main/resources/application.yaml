@@ -1,16 +1,27 @@
 spring:
   application:
     name: terrapi-api
+  profiles:
+    default: dev
+  config:
+    import: optional:file:.env[.properties]
   servlet:
     multipart:
       # CAOP upload sends all .gpkg files in one request; Continente alone is ~180 MB.
       max-file-size: 500MB
       max-request-size: 1GB
-  # Primary datasource: the PostGIS geo database (spatial domain data).
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.batch_size: 50
+  flyway:
+    # Boot's single auto-Flyway is disabled; the geo datasource owns a Flyway bean
+    # (geoFlyway -> db/migration/geo). ddl-auto is per-profile (dev: update, prod: validate).
+    enabled: false
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5445/terrapi_geo}
-    username: ${DB_USERNAME:terrapi}
-    password: ${DB_PASSWORD:terrapi}
+    # Geo (PostGIS) primary datasource. URL + credentials are profile-specific (dev/prod).
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: geo-pool
@@ -19,52 +30,19 @@ spring:
       connection-timeout: 30000
       data-source-properties:
         reWriteBatchedInserts: true
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc.batch_size: 50
-  flyway:
-    enabled: false
-  config:
-    import: optional:file:.env[.properties]
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/terrapi}
-          # JWK set fetched lazily on first token (NimbusJwtDecoder.withJwkSetUri), so app
-          # startup does not require Keycloak to be reachable. See SecurityConfig#jwtDecoder.
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8081/realms/terrapi/protocol/openid-connect/certs}
 
 terrapi:
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   platform:
     api-key-prefix: ${PLATFORM_API_KEY_PREFIX:tp_live_}
-  # Secondary datasource: the platform/SaaS control-plane database (plain Postgres).
   datasource:
     platform:
-      url: ${PLATFORM_DB_URL:jdbc:postgresql://localhost:5446/terrapi_platform}
-      username: ${PLATFORM_DB_USERNAME:terrapi}
-      password: ${PLATFORM_DB_PASSWORD:terrapi}
+      # Platform/SaaS control-plane datasource. URL + credentials are profile-specific.
       driver-class-name: org.postgresql.Driver
       hikari:
         pool-name: platform-pool
         maximum-pool-size: 8
         minimum-idle: 1
         connection-timeout: 30000
-  keycloak:
-    admin:
-      server-url: ${KEYCLOAK_ADMIN_URL:http://localhost:8081}
-      realm: ${KEYCLOAK_REALM:terrapi}
-      auth-realm: ${KEYCLOAK_ADMIN_AUTH_REALM:master}
-      client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
-      username: ${KEYCLOAK_ADMIN_USERNAME:admin}
-      password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
   valhalla:
     url: ${VALHALLA_URL:http://localhost:8002}
   osm:

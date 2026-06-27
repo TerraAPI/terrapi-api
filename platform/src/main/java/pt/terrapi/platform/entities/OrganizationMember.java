@@ -1,4 +1,4 @@
-package pt.terrapi.platform.identity.entities;
+package pt.terrapi.platform.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,7 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import pt.terrapi.platform.identity.enums.OrgRole;
+import pt.terrapi.platform.enums.OrgRole;
 
 import java.time.Instant;
 import java.util.UUID;

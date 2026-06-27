@@ -1,4 +1,4 @@
-package pt.terrapi.platform.identity.entities;
+package pt.terrapi.platform.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

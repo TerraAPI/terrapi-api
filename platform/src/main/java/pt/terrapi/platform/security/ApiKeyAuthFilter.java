@@ -9,7 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-import pt.terrapi.platform.identity.service.ApiKeyService;
+import pt.terrapi.platform.service.ApiKeyService;
 import pt.terrapi.core.context.TenantContext;
 
 import java.io.IOException;

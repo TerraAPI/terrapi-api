@@ -1,14 +1,14 @@
-package pt.terrapi.platform.identity.service;
+package pt.terrapi.platform.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.terrapi.platform.config.PlatformProperties;
-import pt.terrapi.platform.identity.entities.ApiKey;
-import pt.terrapi.platform.identity.entities.Organization;
-import pt.terrapi.platform.identity.enums.ApiKeyStatus;
-import pt.terrapi.platform.identity.repository.ApiKeyRepository;
+import pt.terrapi.platform.entities.ApiKey;
+import pt.terrapi.platform.entities.Organization;
+import pt.terrapi.platform.enums.ApiKeyStatus;
+import pt.terrapi.platform.repository.ApiKeyRepository;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

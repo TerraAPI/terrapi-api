@@ -1,4 +1,4 @@
-package pt.terrapi.platform.identity.enums;
+package pt.terrapi.platform.enums;
 
 public enum ApiKeyStatus {
     ACTIVE,

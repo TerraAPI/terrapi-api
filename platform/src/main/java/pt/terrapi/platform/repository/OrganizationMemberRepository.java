@@ -1,9 +1,9 @@
-package pt.terrapi.platform.identity.repository;
+package pt.terrapi.platform.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import pt.terrapi.platform.identity.entities.AppUser;
-import pt.terrapi.platform.identity.entities.Organization;
-import pt.terrapi.platform.identity.entities.OrganizationMember;
+import pt.terrapi.platform.entities.AppUser;
+import pt.terrapi.platform.entities.Organization;
+import pt.terrapi.platform.entities.OrganizationMember;
 
 import java.util.List;
 import java.util.Optional;

@@ -24,8 +24,8 @@ import org.springframework.security.oauth2.server.resource.web.DefaultBearerToke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestTemplate;
 import pt.terrapi.platform.config.PlatformProperties;
-import pt.terrapi.platform.identity.service.ApiKeyService;
-import pt.terrapi.platform.identity.service.UserProvisioningService;
+import pt.terrapi.platform.service.ApiKeyService;
+import pt.terrapi.platform.service.UserProvisioningService;
 
 import java.time.Duration;
 import java.util.Collection;

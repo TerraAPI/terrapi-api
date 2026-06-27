@@ -13,9 +13,14 @@ spring:
     password: ${DB_PASSWORD:terrapi}
     driver-class-name: org.postgresql.Driver
     hikari:
+      pool-name: geo-pool
+      maximum-pool-size: 16
+      minimum-idle: 2
+      connection-timeout: 30000
       data-source-properties:
         reWriteBatchedInserts: true
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
     properties:
@@ -47,6 +52,11 @@ terrapi:
       username: ${PLATFORM_DB_USERNAME:terrapi}
       password: ${PLATFORM_DB_PASSWORD:terrapi}
       driver-class-name: org.postgresql.Driver
+      hikari:
+        pool-name: platform-pool
+        maximum-pool-size: 8
+        minimum-idle: 1
+        connection-timeout: 30000
   keycloak:
     admin:
       server-url: ${KEYCLOAK_ADMIN_URL:http://localhost:8081}

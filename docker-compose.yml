@@ -10,13 +10,16 @@ services:
       - "5445:5432"
     volumes:
       - geodata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U terrapi -d terrapi_geo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   platform-db:
     image: postgres:18-alpine
     container_name: terrapi-platform-db
-    # One Postgres server hosting two databases: terrapi_platform (the app's SaaS
-    # control plane) and keycloak (created by the init script). Separate databases,
-    # never a shared schema.
     environment:
       POSTGRES_DB: terrapi_platform
       POSTGRES_USER: terrapi
@@ -31,6 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.3
@@ -46,8 +50,6 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_HTTP_ENABLED: "true"
     ports:
-      # Host 8081 maps to Keycloak's HTTP 8080 so the issuer is
-      # http://localhost:8081/realms/terrapi (matches the resource-server issuer-uri).
       - "8081:8080"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro

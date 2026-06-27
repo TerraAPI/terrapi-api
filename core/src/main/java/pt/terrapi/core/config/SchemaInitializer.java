@@ -3,6 +3,7 @@ package pt.terrapi.core.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -12,12 +13,14 @@ import org.springframework.stereotype.Component;
  * the geometry tables.
  *
  * <p>Runs as an {@link ApplicationRunner} - i.e. after Hibernate has created/updated the entity
- * tables. A Flyway migration can't create these indexes because Flyway runs before
- * {@code ddl-auto}. Every statement is idempotent and executed independently, so one failure
- * (e.g. on a non-PostGIS database) does not skip the rest.
+ * tables (the spatial indexes target Hibernate-owned tables, so they can't live in a
+ * pre-Hibernate Flyway migration). Each statement is idempotent and executed independently, so
+ * one failure does not skip the rest; an applied/failed summary is logged at the end. Disabled
+ * under the {@code test} profile, where the datasource is H2 (no PostGIS).
  */
 @Slf4j
 @Component
+@Profile("!test")
 public class SchemaInitializer implements ApplicationRunner {
 
     private static final String[] STATEMENTS = {
@@ -50,13 +53,22 @@ public class SchemaInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        int applied = 0;
+        int failed = 0;
         for (String sql : STATEMENTS) {
             try {
                 jdbcTemplate.execute(sql);
+                applied++;
             } catch (Exception e) {
+                failed++;
                 log.warn("Schema init statement failed (continuing): {} - {}",
                         sql.lines().findFirst().orElse(sql).trim(), e.getMessage());
             }
+        }
+        if (failed > 0) {
+            log.warn("Schema init finished: {} applied, {} failed (see warnings above)", applied, failed);
+        } else {
+            log.info("Schema init finished: {} statements applied", applied);
         }
     }
 }

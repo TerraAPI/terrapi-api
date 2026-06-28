@@ -287,7 +287,7 @@ public class PrecisionWriter {
         }
     }
 
-    record ValidationResult(int totalRows, int nullCount, int invalidCount, int emptyCount) {}
+    public record ValidationResult(int totalRows, int nullCount, int invalidCount, int emptyCount) {}
 
     public static class GenerationFailedException extends RuntimeException {
         public GenerationFailedException(String message) {

@@ -9,3 +9,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+terrapi:
+  flyway:
+    enabled: false

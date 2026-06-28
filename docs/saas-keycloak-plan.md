@@ -3,6 +3,19 @@
 Plan for turning `terrapi-api` into a multi-tenant SaaS using **Keycloak** as the
 identity provider, **opaque API keys** for the data API, and **Stripe** for billing.
 
+> **STATUS: FROZEN.** SaaS development is paused to focus on the core geo API. The
+> `platform` module (this plan's "account" module) is **unwired from the runnable app**
+> (`application/pom.xml`) so `terrapi-api` builds and runs as a pure core geo API — no
+> Spring Security, Keycloak, or platform datasource. The module still compiles in the
+> Maven reactor, and its config is parked in
+> `platform/src/main/resources/application-platform.yaml`.
+>
+> **To resume:** re-add the `platform` dependency in `application/pom.xml` and run with
+> the `platform` profile active (e.g. `SPRING_PROFILES_ACTIVE=dev,platform`).
+>
+> **Naming note:** the implementation uses the module/package `platform` throughout
+> (not `account` as originally drafted below).
+
 ## Decisions
 
 | Topic | Choice |
@@ -35,7 +48,7 @@ without a `web -> account` dependency. The `SecurityFilterChain` defined in `acc
 applies app-wide because it is a servlet filter in the shared Spring context (no
 compile dependency from `web` is required).
 
-## Domain model (new entities, `pt.terrapi.account.entities`, Lombok like `GeoUnit`)
+## Domain model (new entities, `pt.terrapi.platform.entities`, Lombok like `GeoUnit`)
 
 > Terminology: "client" is overloaded. In Keycloak a *client* = an app/credential;
 > in SaaS a *client* = the customer. The customer is modelled as an **Organization**.
@@ -134,7 +147,7 @@ A `HandlerInterceptor` on billable `/api/v1/**`:
 ## Wiring changes (must-do)
 
 - `JpaConfig`: `@EnableJpaRepositories` currently pins `pt.terrapi.core.repository`.
-  **Broaden to `pt.terrapi`** (or add `pt.terrapi.account.repository`) or it will not
+  **Broaden to `pt.terrapi`** (or add `pt.terrapi.platform.repository`) or it will not
   see the account repos. Entity auto-scan from `pt.terrapi` already covers account.
 - `application.yaml`: add `spring.security.oauth2.resourceserver.jwt.issuer-uri`,
   Keycloak admin (`url` / `realm` / `client` / `secret`), Stripe (`secret-key`,
@@ -154,9 +167,9 @@ A `HandlerInterceptor` on billable `/api/v1/**`:
 
 ## Build order
 
-1. Keycloak up + resource-server security + JIT upsert + lock CORS/endpoints.
-2. `Organization` + members + invite (Keycloak Admin API).
-3. API keys + `ApiKeyAuthFilter` + `TenantContext`.
-4. Usage (`UsageStore` / `RateLimiter` Caffeine) + interceptor.
-5. Plans + `Subscription` + Stripe checkout/portal/webhooks + trials.
-6. Console controllers + OpenAPI.
+1. ✅ Keycloak up + resource-server security + JIT upsert + lock CORS/endpoints.
+2. ✅ `Organization` + members + invite (Keycloak Admin API).
+3. ✅ API keys + `ApiKeyAuthFilter` + `TenantContext`.
+4. ⏸ **FROZEN (next on resume)** — Usage (`UsageStore` / `RateLimiter` Caffeine) + interceptor.
+5. ⏳ Plans + `Subscription` + Stripe checkout/portal/webhooks + trials.
+6. ⏳ Console controllers + OpenAPI.

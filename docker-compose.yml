@@ -1,15 +1,68 @@
 services:
-  postgres:
+  geo-db:
     image: postgis/postgis:18-3.6-alpine
-    container_name: terrapi-db
+    container_name: terrapi-geo-db
     environment:
-      POSTGRES_DB: terrapi
+      POSTGRES_DB: terrapi_geo
       POSTGRES_USER: terrapi
       POSTGRES_PASSWORD: terrapi
     ports:
       - "5445:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/
+      - geodata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U terrapi -d terrapi_geo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FROZEN SaaS service: only starts with the "platform" Compose profile
+  # (docker compose --profile platform up). See docs/saas-keycloak-plan.md.
+  platform-db:
+    image: postgres:18-alpine
+    container_name: terrapi-platform-db
+    profiles: ["platform"]
+    environment:
+      POSTGRES_DB: terrapi_platform
+      POSTGRES_USER: terrapi
+      POSTGRES_PASSWORD: terrapi
+    ports:
+      - "5446:5432"
+    volumes:
+      - platformdata:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U terrapi -d terrapi_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FROZEN SaaS service: only starts with the "platform" Compose profile
+  # (docker compose --profile platform up). See docs/saas-keycloak-plan.md.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.3
+    container_name: terrapi-keycloak
+    profiles: ["platform"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://platform-db:5432/keycloak
+      KC_DB_USERNAME: terrapi
+      KC_DB_PASSWORD: terrapi
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    depends_on:
+      platform-db:
+        condition: service_healthy
+    restart: unless-stopped
 
   valhalla:
     image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
@@ -24,4 +77,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  geodata:
+  platformdata:

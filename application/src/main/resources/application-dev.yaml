@@ -1,0 +1,14 @@
+# Local development profile (active by default via spring.profiles.default: dev).
+# Localhost / dev-credential defaults; env vars (incl. .env) override these.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5445/terrapi_geo}
+    username: ${DB_USERNAME:terrapi}
+    password: ${DB_PASSWORD:terrapi}
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+terrapi:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}

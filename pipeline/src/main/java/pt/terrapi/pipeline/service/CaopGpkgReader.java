@@ -41,6 +41,7 @@ public class CaopGpkgReader {
             List<GeoUnit> units = new ArrayList<>();
             readStatistical(conn, prefix, units);
             readAdministrative(conn, prefix, units);
+            resolveParentsByCode(units);
             List<BorderSegment> borders = readBorders(conn, prefix);
 
             return new GpkgData(sourceEpsg, units, borders);
@@ -71,6 +72,44 @@ public class CaopGpkgReader {
         readLevel(conn, prefix + "freguesias",
                 RowMappers.GeoUnitMapper.parishColumns(), out,
                 rs -> RowMappers.GeoUnitMapper.mapRowParish(rs, municipalities));
+    }
+
+    private void resolveParentsByCode(List<GeoUnit> units) {
+        Map<String, GeoUnit> byCode = new HashMap<>();
+        for (GeoUnit u : units) {
+            byCode.put(u.getCode(), u);
+        }
+        for (GeoUnit u : units) {
+            if (u.getParent() != null || u.getCode() == null) {
+                continue;
+            }
+            GeoUnit resolved = null;
+            switch (u.getType()) {
+                case MUNICIPALITY -> {
+                    String districtCode = u.getCode().substring(0, 2);
+                    resolved = byCode.get(districtCode);
+                }
+                case PARISH -> {
+                    String muniCode = u.getCode().substring(0, 4);
+                    resolved = byCode.get(muniCode);
+                }
+                case NUTS2 -> {
+                    if (u.getCode().length() >= 3) {
+                        resolved = byCode.get(u.getCode().substring(0, 3));
+                    }
+                }
+                case NUTS3 -> {
+                    if (u.getCode().length() >= 4) {
+                        resolved = byCode.get(u.getCode().substring(0, 4));
+                    }
+                }
+            }
+            if (resolved != null) {
+                log.warn("  Parent resolved by code-prefix fallback: {} ({}) -> {} ({})",
+                        u.getCode(), u.getName(), resolved.getCode(), resolved.getName());
+                u.setParent(resolved);
+            }
+        }
     }
 
     /**

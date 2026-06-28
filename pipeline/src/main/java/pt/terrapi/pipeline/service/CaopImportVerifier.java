@@ -81,12 +81,19 @@ public class CaopImportVerifier {
 
         String inClause = java.util.Arrays.stream(CHILD_TYPES_REQUIRING_PARENT)
                 .mapToObj(Integer::toString).reduce((a, b) -> a + "," + b).orElseThrow();
-        Long orphans = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM geo_units WHERE parent_code IS NULL AND type IN (" + inClause + ")",
-                Long.class);
-        if (orphans != null && orphans > 0) {
-            throw new IllegalStateException(orphans + " municipality/parish/NUTS2/NUTS3 units have no "
-                    + "parent_code - a parent name failed to resolve (CAOP naming/encoding mismatch)");
+        var orphanList = jdbcTemplate.queryForList(
+                "SELECT code, name, type FROM geo_units WHERE parent_code IS NULL AND type IN (" + inClause + ")");
+        if (!orphanList.isEmpty()) {
+            var details = new StringBuilder();
+            int limit = Math.min(orphanList.size(), 10);
+            for (int i = 0; i < limit; i++) {
+                var row = orphanList.get(i);
+                details.append(String.format("  code=%s name=%s type=%s%n",
+                        row.get("code"), row.get("name"), row.get("type")));
+            }
+            throw new IllegalStateException(orphanList.size() + " municipality/parish/NUTS2/NUTS3 units have no "
+                    + "parent_code - parent name resolution and code-prefix fallback both failed. "
+                    + "First " + limit + ":\n" + details);
         }
 
         Long badNuts3 = jdbcTemplate.queryForObject("""

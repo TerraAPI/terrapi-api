@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.service.precision;
+package pt.terrapi.pipeline.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;

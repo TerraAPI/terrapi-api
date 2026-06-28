@@ -13,8 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import pt.terrapi.pipeline.config.LodLevel;
 import pt.terrapi.pipeline.config.PrecisionProperties;
-import pt.terrapi.pipeline.service.precision.PrecisionWriter.ValidationResult;
-import pt.terrapi.pipeline.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.pipeline.service.PrecisionPolicyService;
+import pt.terrapi.pipeline.service.PrecisionWriter;
+import pt.terrapi.pipeline.service.PrecisionWriter.ValidationResult;
+import pt.terrapi.pipeline.service.PrecisionWriter.WriteResult;
 
 import java.util.List;
 import java.util.UUID;

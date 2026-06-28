@@ -13,7 +13,9 @@ import pt.terrapi.pipeline.dto.GenerationResult;
 import pt.terrapi.pipeline.entities.PrecisionGeneration;
 import pt.terrapi.pipeline.enums.GenerationStatus;
 import pt.terrapi.pipeline.repository.PrecisionGenerationRepository;
-import pt.terrapi.pipeline.service.precision.PrecisionWriter.WriteResult;
+import pt.terrapi.pipeline.service.PrecisionGenerationService;
+import pt.terrapi.pipeline.service.PrecisionWriter;
+import pt.terrapi.pipeline.service.PrecisionWriter.WriteResult;
 
 import java.util.UUID;
 

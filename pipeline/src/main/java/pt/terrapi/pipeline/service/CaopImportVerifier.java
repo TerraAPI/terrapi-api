@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.service.caop;
+package pt.terrapi.pipeline.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ import pt.terrapi.core.enums.GeoUnitType;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ImportVerifier {
+public class CaopImportVerifier {
 
     /** Child types that must always have a resolved parent (roots are excluded). */
     private static final int[] CHILD_TYPES_REQUIRING_PARENT = {

@@ -21,7 +21,7 @@ import pt.terrapi.core.enums.GeoUnitType;
 public class GeoUnit {
 
     @Id
-    @Column(length = 6, nullable = false, unique = true)
+    @Column(length = 8, nullable = false, unique = true)
     private String code;
 
     @Column(nullable = false)

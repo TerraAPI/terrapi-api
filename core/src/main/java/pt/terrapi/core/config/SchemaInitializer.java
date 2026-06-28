@@ -27,8 +27,8 @@ public class SchemaInitializer implements ApplicationRunner {
             // Helper table not mapped by a JPA entity (written by GeoDerivationService).
             """
             CREATE TABLE IF NOT EXISTS geo_unit_adjacency (
-                code VARCHAR(6) NOT NULL,
-                neighbour_code VARCHAR(6) NOT NULL,
+                code VARCHAR(8) NOT NULL,
+                neighbour_code VARCHAR(8) NOT NULL,
                 PRIMARY KEY (code, neighbour_code)
             )""",
             "CREATE INDEX IF NOT EXISTS idx_adjacency_code ON geo_unit_adjacency (code)",

@@ -20,6 +20,7 @@ public final class GeoUnitMapper {
                 entity.getSimplifiedName(),
                 entity.getType(),
                 entity.getParent() != null ? toMinimalDto(entity.getParent()) : null,
+                entity.getNuts1Code(),
                 entity.getNuts3Code(),
                 entity.getAreaHa(),
                 entity.getPerimeterKm(),

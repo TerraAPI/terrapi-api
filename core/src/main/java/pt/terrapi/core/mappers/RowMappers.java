@@ -112,7 +112,7 @@ public final class RowMappers {
         private GeoUnitMapper() {}
 
         public static String[] districtColumns() {
-            return new String[]{"dt", "distrito", "n_municipios", "n_freguesias"};
+            return new String[]{"dt", "distrito", "nuts1_cod", "n_municipios", "n_freguesias"};
         }
 
         public static String[] municipalityColumns() {
@@ -141,6 +141,7 @@ public final class RowMappers {
                     ? GeoUnitType.ISLAND : GeoUnitType.DISTRICT);
             u.setCode(rs.getString("dt"));
             u.setName(rs.getString("distrito"));
+            u.setNuts1Code(nutsCode(rs.getString("nuts1_cod")));
             u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
             u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);

@@ -30,10 +30,10 @@ public class CaopGeoUnitWriter {
      */
     private static final String UPSERT_GEO_UNIT_SQL = """
             INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
-                                   type, parent_code, simplified_name, nuts3_code,
+                                   type, parent_code, simplified_name, nuts1_code, nuts3_code,
                                    municipality_count, parish_count)
             VALUES (?, ?, ST_Transform(ST_GeomFromWKB(?, ?), 4326),
-                    ?, ?, ?, ?, ?, ?, ?, ?)
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (code) DO UPDATE SET
                 name = EXCLUDED.name,
                 geometry = CASE
@@ -48,6 +48,7 @@ public class CaopGeoUnitWriter {
                 type = EXCLUDED.type,
                 parent_code = EXCLUDED.parent_code,
                 simplified_name = EXCLUDED.simplified_name,
+                nuts1_code = EXCLUDED.nuts1_code,
                 nuts3_code = EXCLUDED.nuts3_code,
                 municipality_count = COALESCE(geo_units.municipality_count, 0)
                                      + COALESCE(EXCLUDED.municipality_count, 0),
@@ -94,9 +95,10 @@ public class CaopGeoUnitWriter {
             ps.setInt(7, u.getType().getValue());
             ps.setString(8, u.getParent() != null ? u.getParent().getCode() : null);
             ps.setString(9, u.getSimplifiedName());
-            ps.setString(10, u.getNuts3Code());
-            ps.setObject(11, u.getMunicipalityCount());
-            ps.setObject(12, u.getParishCount());
+            ps.setString(10, u.getNuts1Code());
+            ps.setString(11, u.getNuts3Code());
+            ps.setObject(12, u.getMunicipalityCount());
+            ps.setObject(13, u.getParishCount());
         });
     }
 

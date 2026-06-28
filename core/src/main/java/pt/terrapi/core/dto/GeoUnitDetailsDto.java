@@ -17,6 +17,8 @@ public record GeoUnitDetailsDto(
         @Schema(description = "Parent unit")
         GeoUnitSummaryDto parent,
 
+        @Schema(description = "NUTS I code")
+        String nuts1Code,
         @Schema(description = "NUTS III code")
         String nuts3Code,
         @Schema(description = "Area in hectares")

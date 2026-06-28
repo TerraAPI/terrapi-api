@@ -54,6 +54,12 @@ public class GeoUnit {
     private String simplifiedName;
 
     /**
+     * NUTS 1 code - populated for {@link GeoUnitType#DISTRICT} and {@link GeoUnitType#ISLAND} units.
+     */
+    @Column(length = 4)
+    private String nuts1Code;
+
+    /**
      * NUTS 3 code - only populated for {@link GeoUnitType#MUNICIPALITY} units.
      */
     @Column(length = 5)

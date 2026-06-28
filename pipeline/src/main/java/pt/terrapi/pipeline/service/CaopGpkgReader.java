@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.service.caop;
+package pt.terrapi.pipeline.service;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

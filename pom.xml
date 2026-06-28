@@ -17,7 +17,6 @@
         <module>core</module>
         <module>application</module>
         <module>web</module>
-        <module>platform</module>
         <module>pipeline</module>
     </modules>
 
@@ -43,11 +42,6 @@
                 <artifactId>web</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>pt.terrapi</groupId>
-                <artifactId>platform</artifactId>
-                <version>${project.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -60,11 +54,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-cache-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

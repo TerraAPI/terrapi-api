@@ -24,19 +24,6 @@
             <groupId>pt.terrapi</groupId>
             <artifactId>web</artifactId>
         </dependency>
-        <!--
-          SaaS/platform layer FROZEN: unwired from the runnable app so this builds as a
-          pure core geo API (no Spring Security, Keycloak, or platform datasource).
-          The platform module still compiles in the reactor. To resume SaaS development,
-          re-add this dependency and load platform/.../application-platform.yaml.
-          See docs/saas-keycloak-plan.md.
-        -->
-        <!--
-        <dependency>
-            <groupId>pt.terrapi</groupId>
-            <artifactId>platform</artifactId>
-        </dependency>
-        -->
     </dependencies>
 
     <build>

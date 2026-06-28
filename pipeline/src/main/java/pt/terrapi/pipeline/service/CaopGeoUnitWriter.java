@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.service.caop;
+package pt.terrapi.pipeline.service;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import pt.terrapi.core.entities.GeoUnit;
  */
 @Component
 @RequiredArgsConstructor
-public class GeoUnitWriter {
+public class CaopGeoUnitWriter {
 
     private static final WKBWriter WKB_WRITER = new WKBWriter();
 

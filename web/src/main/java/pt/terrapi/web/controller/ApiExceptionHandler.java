@@ -14,7 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  * <ul>
  *   <li>{@link IllegalArgumentException} - bad input (missing/too many files, bad path) → 400.</li>
  *   <li>{@link MaxUploadSizeExceededException} - upload over the configured limit → 413.</li>
- *   <li>{@link IllegalStateException} - import/tool failure (e.g. the osm2pgsql tail) → 500.</li>
+ *   <li>{@link IllegalStateException} - import/tool failure → 500.</li>
  * </ul>
  *
  * <p>Deliberately scoped to these types so Spring's own request-binding exceptions (type

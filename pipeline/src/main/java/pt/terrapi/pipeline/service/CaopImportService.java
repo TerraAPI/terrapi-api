@@ -1,4 +1,4 @@
-package pt.terrapi.pipeline.service.caop;
+package pt.terrapi.pipeline.service;
 
 import java.io.File;
 import java.util.EnumMap;
@@ -19,12 +19,11 @@ import pt.terrapi.core.dto.ImportResult;
 import pt.terrapi.core.entities.GeoUnit;
 import pt.terrapi.pipeline.enums.GenerationStatus;
 import pt.terrapi.core.enums.GeoUnitType;
-import pt.terrapi.pipeline.service.caop.CaopGpkgReader.GpkgData;
-import pt.terrapi.pipeline.service.precision.PrecisionGenerationService;
+import pt.terrapi.pipeline.service.CaopGpkgReader.GpkgData;
 
 /**
  * Orchestrates a CAOP import: read each GeoPackage ({@link CaopGpkgReader}) → write to PostGIS
- * ({@link GeoUnitWriter}) → verify ({@link ImportVerifier}) → derive ({@link GeoDerivationService})
+ * ({@link CaopGeoUnitWriter}) → verify ({@link CaopImportVerifier}) → derive ({@link CaopGeoDerivationService})
  * → asynchronously regenerate precisions.
  */
 @Slf4j
@@ -32,16 +31,16 @@ import pt.terrapi.pipeline.service.precision.PrecisionGenerationService;
 public class CaopImportService {
 
     private final CaopGpkgReader reader;
-    private final GeoUnitWriter writer;
-    private final GeoDerivationService deriver;
-    private final ImportVerifier verifier;
+    private final CaopGeoUnitWriter writer;
+    private final CaopGeoDerivationService deriver;
+    private final CaopImportVerifier verifier;
     private final PrecisionGenerationService precisionGenerationService;
     private final TaskExecutor taskExecutor;
 
     public CaopImportService(CaopGpkgReader reader,
-                             GeoUnitWriter writer,
-                             GeoDerivationService deriver,
-                             ImportVerifier verifier,
+                             CaopGeoUnitWriter writer,
+                             CaopGeoDerivationService deriver,
+                             CaopImportVerifier verifier,
                              PrecisionGenerationService precisionGenerationService,
                              @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
         this.reader = reader;

@@ -32,16 +32,6 @@ spring:
         reWriteBatchedInserts: true
 
 terrapi:
-  # SaaS/platform config (datasource, oauth2, keycloak) is FROZEN and lives in
-  # platform/src/main/resources/application-platform.yaml. See docs/saas-keycloak-plan.md.
-  valhalla:
-    url: ${VALHALLA_URL:http://localhost:8002}
-  osm:
-    osm2pgsql-path: ${OSM2PGSQL_PATH:osm2pgsql}
-    style-resource: osm/routing-edges.lua
-    slim: ${OSM_SLIM:false}
-    number-processes: 0
-    log-progress-seconds: 10
   precision:
     simplify-boundary: true
     ladder:

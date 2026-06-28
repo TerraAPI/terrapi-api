@@ -35,5 +35,9 @@ public record GeoUnitDetailsDto(
         @Schema(description = "Longitude of the interior representative point")
         Double lon,
         @Schema(description = "Latitude of the interior representative point")
-        Double lat
+        Double lat,
+        @Schema(description = "Longitude of the administrative center (null until seat data is imported)")
+        Double adminCenterLon,
+        @Schema(description = "Latitude of the administrative center (null until seat data is imported)")
+        Double adminCenterLat
 ) {}

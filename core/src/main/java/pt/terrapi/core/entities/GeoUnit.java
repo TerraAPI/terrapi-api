@@ -72,6 +72,13 @@ public class GeoUnit {
     private Point representativePoint;
 
     /**
+     * Actual administrative seat location (e.g. town hall, parish council).
+     * Nullable — not populated by the GPKG import; requires a separate seat dataset.
+     */
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point administrativeCenter;
+
+    /**
      * Number of child municipalities (DISTRICT, ISLAND, NUTS levels); null for leaf types.
      */
     private Integer municipalityCount;

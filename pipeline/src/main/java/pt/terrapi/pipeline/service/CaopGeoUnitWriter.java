@@ -66,16 +66,15 @@ public class CaopGeoUnitWriter {
 
     public void clearAuxData() {
         jdbcTemplate.update("DELETE FROM geo_unit_adjacency");
+        jdbcTemplate.update("DELETE FROM border_segment_precisions");
         jdbcTemplate.update("DELETE FROM border_segments");
     }
 
     /**
-     * Empties {@code geo_units} ahead of a full rebuild. Safe to call: no other table holds a
-     * foreign key to it - {@code geo_unit_precisions} and {@code geo_unit_adjacency} store the
-     * code as a plain column and are regenerated after the import. Clearing first lets the
-     * merge-mode upsert sum attributes without double-counting across re-imports.
+     * Empties {@code geo_unit_precisions} and {@code geo_units} ahead of a full rebuild.
      */
     public void clearGeoUnits() {
+        jdbcTemplate.update("DELETE FROM geo_unit_precisions");
         jdbcTemplate.update("DELETE FROM geo_units");
     }
 

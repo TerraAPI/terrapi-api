@@ -32,8 +32,6 @@ spring:
         reWriteBatchedInserts: true
 
 terrapi:
-  # SaaS/platform config (datasource, oauth2, keycloak) is FROZEN and lives in
-  # platform/src/main/resources/application-platform.yaml. See docs/saas-keycloak-plan.md.
   precision:
     simplify-boundary: true
     ladder:

@@ -8,6 +8,7 @@ public enum GeoUnitType {
     MUNICIPALITY(2, GeoUnitCategory.ADMINISTRATIVE),
     PARISH(3, GeoUnitCategory.ADMINISTRATIVE),
     ISLAND(7, GeoUnitCategory.SPECIAL),
+    AUTONOMOUS_REGION(8, GeoUnitCategory.ADMINISTRATIVE),
     NUTS1(11, GeoUnitCategory.STATISTICAL),
     NUTS2(12, GeoUnitCategory.STATISTICAL),
     NUTS3(13, GeoUnitCategory.STATISTICAL);
@@ -51,6 +52,8 @@ public enum GeoUnitType {
                     || descendantType == MUNICIPALITY || descendantType == PARISH;
             case NUTS3 -> descendantType == MUNICIPALITY || descendantType == PARISH;
             case ISLAND -> descendantType.isAdministrative() || descendantType.isStatistical();
+            case AUTONOMOUS_REGION -> descendantType == ISLAND
+                    || descendantType.isAdministrative() || descendantType.isStatistical();
         };
     }
 

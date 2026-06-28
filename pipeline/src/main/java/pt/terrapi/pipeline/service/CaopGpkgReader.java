@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pt.terrapi.core.entities.BorderSegment;
 import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
 import pt.terrapi.core.enums.SourceDataset;
 import pt.terrapi.core.mappers.RowMappers;
 
@@ -42,6 +43,7 @@ public class CaopGpkgReader {
             readStatistical(conn, prefix, units);
             readAdministrative(conn, prefix, units);
             resolveParentsByCode(units);
+            addAutonomousRegionParents(units, prefix);
             List<BorderSegment> borders = readBorders(conn, prefix);
 
             return new GpkgData(sourceEpsg, units, borders);
@@ -110,6 +112,28 @@ public class CaopGpkgReader {
                 u.setParent(resolved);
             }
         }
+    }
+
+    private void addAutonomousRegionParents(List<GeoUnit> units, String prefix) {
+        if (!prefix.startsWith("ram") && !prefix.startsWith("raa")) {
+            return;
+        }
+        boolean isMadeira = prefix.startsWith("ram");
+        String code = isMadeira ? "PT-AR-M" : "PT-AR-A";
+        String name = isMadeira ? "Região Autónoma da Madeira" : "Região Autónoma dos Açores";
+
+        GeoUnit region = new GeoUnit();
+        region.setCode(code);
+        region.setName(name);
+        region.setType(GeoUnitType.AUTONOMOUS_REGION);
+        units.add(region);
+
+        for (GeoUnit u : units) {
+            if (u.getType() == GeoUnitType.ISLAND && u.getParent() == null) {
+                u.setParent(region);
+            }
+        }
+        log.info("  Added synthetic AUTONOMOUS_REGION parent: {} ({})", name, code);
     }
 
     /**

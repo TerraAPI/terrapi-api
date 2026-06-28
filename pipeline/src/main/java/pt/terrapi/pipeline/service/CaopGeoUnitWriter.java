@@ -57,8 +57,9 @@ public class CaopGeoUnitWriter {
             """;
 
     private static final String INSERT_BORDER_SQL = """
-            INSERT INTO border_segments (geometry, level, line_type, ea_right, ea_left, length_km)
-            VALUES (ST_Transform(ST_GeomFromWKB(?, ?), 4326), ?, ?, ?, ?, ?)
+            INSERT INTO border_segments (geometry, level, line_type, ea_right, ea_left,
+                                          pais, estado_limite_admin, length_km)
+            VALUES (ST_Transform(ST_GeomFromWKB(?, ?), 4326), ?, ?, ?, ?, ?, ?, ?)
             """;
 
     private final JdbcTemplate jdbcTemplate;
@@ -111,7 +112,9 @@ public class CaopGeoUnitWriter {
             ps.setString(4, b.getLineType());
             ps.setString(5, b.getEaRight());
             ps.setString(6, b.getEaLeft());
-            ps.setObject(7, b.getLengthKm());
+            ps.setString(7, b.getPais());
+            ps.setString(8, b.getEstadoLimiteAdmin());
+            ps.setObject(9, b.getLengthKm());
         });
     }
 

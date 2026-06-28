@@ -38,6 +38,8 @@ public final class RowMappers {
         b.setEaLeft(rs.getString("ea_esquerda"));
         b.setLevel(parseLevel(rs.getString("nivel_limite_admin")));
         b.setLineType(parseLineType(rs.getString("significado_linha")));
+        b.setPais(rs.getString("paises"));
+        b.setEstadoLimiteAdmin(rs.getString("estado_limite_admin"));
         double len = rs.getDouble("comprimento_km");
         b.setLengthKm(rs.wasNull() ? null : len);
         return b;

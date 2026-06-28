@@ -141,7 +141,8 @@ public class CaopGpkgReader {
         }
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT geom, ea_direita, ea_esquerda, "
-                     + "nivel_limite_admin, significado_linha, comprimento_km FROM " + table)) {
+                     + "nivel_limite_admin, significado_linha, paises, estado_limite_admin, "
+                     + "comprimento_km FROM " + table)) {
             while (rs.next()) {
                 borders.add(RowMappers.mapBorderSegment(rs));
             }

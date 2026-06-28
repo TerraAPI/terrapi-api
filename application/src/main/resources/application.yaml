@@ -32,17 +32,8 @@ spring:
         reWriteBatchedInserts: true
 
 terrapi:
-  platform:
-    api-key-prefix: ${PLATFORM_API_KEY_PREFIX:tp_live_}
-  datasource:
-    platform:
-      # Platform/SaaS control-plane datasource. URL + credentials are profile-specific.
-      driver-class-name: org.postgresql.Driver
-      hikari:
-        pool-name: platform-pool
-        maximum-pool-size: 8
-        minimum-idle: 1
-        connection-timeout: 30000
+  # SaaS/platform config (datasource, oauth2, keycloak) is FROZEN and lives in
+  # platform/src/main/resources/application-platform.yaml. See docs/saas-keycloak-plan.md.
   valhalla:
     url: ${VALHALLA_URL:http://localhost:8002}
   osm:

@@ -13,9 +13,3 @@ spring:
 terrapi:
   flyway:
     enabled: false
-  datasource:
-    platform:
-      url: jdbc:h2:mem:platformdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
-      driver-class-name: org.h2.Driver
-      username: sa
-      password:

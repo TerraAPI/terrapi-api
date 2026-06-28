@@ -8,32 +8,13 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      # Prod schema is Flyway-owned: generate baselines for db/migration/{geo,platform}
-      # before first boot. Hibernate then only validates the schema, never mutates it.
+      # Prod geo schema is Flyway-owned (db/migration/geo): generate baselines before
+      # first boot. Hibernate then only validates the schema, never mutates it.
       ddl-auto: validate
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
 
 terrapi:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
-  datasource:
-    platform:
-      url: ${PLATFORM_DB_URL}
-      username: ${PLATFORM_DB_USERNAME}
-      password: ${PLATFORM_DB_PASSWORD}
-  keycloak:
-    admin:
-      server-url: ${KEYCLOAK_ADMIN_URL}
-      realm: ${KEYCLOAK_REALM:terrapi}
-      auth-realm: ${KEYCLOAK_ADMIN_AUTH_REALM:master}
-      client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
-      username: ${KEYCLOAK_ADMIN_USERNAME}
-      password: ${KEYCLOAK_ADMIN_PASSWORD}
 
 # API docs / Swagger UI are dev aids; keep them off in production.
 springdoc:

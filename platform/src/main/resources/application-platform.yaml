@@ -1,0 +1,45 @@
+# FROZEN SaaS/platform configuration.
+#
+# The platform module is currently unwired from the runnable app (see
+# application/pom.xml) so terrapi-api builds and runs as a pure core geo API.
+# This file lives in the platform module's resources and is a profile-specific
+# config: it is only loaded when the "platform" profile is active AND the
+# platform module is on the classpath.
+#
+# To resume SaaS development:
+#   1. Re-add the platform dependency in application/pom.xml.
+#   2. Run with the "platform" profile active (e.g. SPRING_PROFILES_ACTIVE=dev,platform).
+#
+# These values use dev-style ${ENV:default} placeholders; in production set every
+# env var explicitly. See docs/saas-keycloak-plan.md.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/terrapi}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8081/realms/terrapi/protocol/openid-connect/certs}
+
+terrapi:
+  platform:
+    api-key-prefix: ${PLATFORM_API_KEY_PREFIX:tp_live_}
+  datasource:
+    platform:
+      # Platform/SaaS control-plane datasource (plain Postgres, separate from PostGIS geo DB).
+      driver-class-name: org.postgresql.Driver
+      url: ${PLATFORM_DB_URL:jdbc:postgresql://localhost:5446/terrapi_platform}
+      username: ${PLATFORM_DB_USERNAME:terrapi}
+      password: ${PLATFORM_DB_PASSWORD:terrapi}
+      hikari:
+        pool-name: platform-pool
+        maximum-pool-size: 8
+        minimum-idle: 1
+        connection-timeout: 30000
+  keycloak:
+    admin:
+      server-url: ${KEYCLOAK_ADMIN_URL:http://localhost:8081}
+      realm: ${KEYCLOAK_REALM:terrapi}
+      auth-realm: ${KEYCLOAK_ADMIN_AUTH_REALM:master}
+      client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
+      username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+      password: ${KEYCLOAK_ADMIN_PASSWORD:admin}

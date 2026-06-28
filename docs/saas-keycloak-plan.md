@@ -3,6 +3,19 @@
 Plan for turning `terrapi-api` into a multi-tenant SaaS using **Keycloak** as the
 identity provider, **opaque API keys** for the data API, and **Stripe** for billing.
 
+> **STATUS: FROZEN.** SaaS development is paused to focus on the core geo API. The
+> `platform` module (this plan's "account" module) is **unwired from the runnable app**
+> (`application/pom.xml`) so `terrapi-api` builds and runs as a pure core geo API — no
+> Spring Security, Keycloak, or platform datasource. The module still compiles in the
+> Maven reactor, and its config is parked in
+> `platform/src/main/resources/application-platform.yaml`.
+>
+> **To resume:** re-add the `platform` dependency in `application/pom.xml` and run with
+> the `platform` profile active (e.g. `SPRING_PROFILES_ACTIVE=dev,platform`).
+>
+> **Naming note:** the implementation uses the module/package `platform` throughout
+> (not `account` as originally drafted below).
+
 ## Decisions
 
 | Topic | Choice |
@@ -154,9 +167,9 @@ A `HandlerInterceptor` on billable `/api/v1/**`:
 
 ## Build order
 
-1. Keycloak up + resource-server security + JIT upsert + lock CORS/endpoints.
-2. `Organization` + members + invite (Keycloak Admin API).
-3. API keys + `ApiKeyAuthFilter` + `TenantContext`.
-4. Usage (`UsageStore` / `RateLimiter` Caffeine) + interceptor.
-5. Plans + `Subscription` + Stripe checkout/portal/webhooks + trials.
-6. Console controllers + OpenAPI.
+1. ✅ Keycloak up + resource-server security + JIT upsert + lock CORS/endpoints.
+2. ✅ `Organization` + members + invite (Keycloak Admin API).
+3. ✅ API keys + `ApiKeyAuthFilter` + `TenantContext`.
+4. ⏸ **FROZEN (next on resume)** — Usage (`UsageStore` / `RateLimiter` Caffeine) + interceptor.
+5. ⏳ Plans + `Subscription` + Stripe checkout/portal/webhooks + trials.
+6. ⏳ Console controllers + OpenAPI.

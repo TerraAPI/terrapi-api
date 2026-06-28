@@ -3,6 +3,10 @@ package pt.terrapi.pipeline.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,25 +16,16 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import pt.terrapi.core.dto.ImportResult;
 import pt.terrapi.pipeline.service.caop.CaopImportService;
-import pt.terrapi.pipeline.service.osm.OsmImportService;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/v1/import")
-@Tag(name = "Import", description = "Import CAOP (GeoPackage) and OSM (.pbf) files")
+@Tag(name = "Import", description = "Import CAOP (GeoPackage) files")
 public class ImportController {
 
     private final CaopImportService caopImportService;
-    private final OsmImportService osmImportService;
 
-    public ImportController(CaopImportService caopImportService,
-                           OsmImportService osmImportService) {
+    public ImportController(CaopImportService caopImportService) {
         this.caopImportService = caopImportService;
-        this.osmImportService = osmImportService;
     }
 
     @PostMapping("/caop/{folder}")
@@ -68,7 +63,6 @@ public class ImportController {
         }
     }
 
-    /** Best-effort recursive delete of the upload temp directory. */
     private static void deleteRecursively(Path dir) {
         if (dir == null) {
             return;
@@ -78,49 +72,9 @@ public class ImportController {
                 try {
                     Files.deleteIfExists(p);
                 } catch (IOException ignored) {
-                    // best-effort temp cleanup
                 }
             });
         } catch (IOException ignored) {
-            // best-effort temp cleanup
-        }
-    }
-
-    @PostMapping("/osm/{folder}")
-    @Operation(summary = "Import folder with a single .pbf file via osm2pgsql (development)")
-    public ResponseEntity<ImportResult> importOsmFolder(
-            @Parameter(description = "Server path to folder containing one .pbf file")
-            @PathVariable String folder) {
-        ImportResult result = osmImportService.importFolder(folder);
-        return ResponseEntity.ok(result);
-    }
-
-    @PostMapping("/osm/upload")
-    @Operation(summary = "Import .pbf file via osm2pgsql")
-    public ResponseEntity<ImportResult> importOsmUpload(
-            @RequestParam("file") MultipartFile file) {
-        Path tempFile = null;
-        try {
-            tempFile = Files.createTempFile("osm_", ".pbf");
-            file.transferTo(tempFile.toFile());
-            ImportResult result = osmImportService.importPbf(tempFile.toString());
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            throw new IllegalStateException("Upload failed: " + e.getMessage(), e);
-        } finally {
-            deleteQuietly(tempFile);
-        }
-    }
-
-    /** Best-effort delete of the upload temp file. */
-    private static void deleteQuietly(Path path) {
-        if (path == null) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException ignored) {
-            // best-effort temp cleanup
         }
     }
 }

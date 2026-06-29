@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: terrapi-api
@@ -7,7 +10,6 @@ spring:
     import: optional:file:.env[.properties]
   servlet:
     multipart:
-      # CAOP upload sends all .gpkg files in one request; Continente alone is ~180 MB.
       max-file-size: 500MB
       max-request-size: 1GB
   jpa:
@@ -17,11 +19,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc.batch_size: 50
   flyway:
-    # Boot's single auto-Flyway is disabled; the geo datasource owns a Flyway bean
-    # (geoFlyway -> db/migration/geo). ddl-auto is per-profile (dev: update, prod: validate).
     enabled: false
   datasource:
-    # Geo (PostGIS) primary datasource. URL + credentials are profile-specific (dev/prod).
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: geo-pool

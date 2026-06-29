@@ -1,6 +1,4 @@
 # Production profile. Activate with SPRING_PROFILES_ACTIVE=prod.
-# Every secret / URL is a required env var with NO default, so a misconfigured
-# deployment fails fast at startup instead of silently using dev defaults.
 spring:
   datasource:
     url: ${DB_URL}
@@ -8,15 +6,12 @@ spring:
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      # Prod geo schema is Flyway-owned (db/migration/geo): generate baselines before
-      # first boot. Hibernate then only validates the schema, never mutates it.
       ddl-auto: validate
 
 terrapi:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
-# API docs / Swagger UI are dev aids; keep them off in production.
 springdoc:
   api-docs:
     enabled: false

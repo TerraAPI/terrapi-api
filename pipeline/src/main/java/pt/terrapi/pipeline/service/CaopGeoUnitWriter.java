@@ -30,10 +30,10 @@ public class CaopGeoUnitWriter {
      */
     private static final String UPSERT_GEO_UNIT_SQL = """
             INSERT INTO geo_units (code, name, geometry, area_ha, perimeter_km,
-                                   type, parent_code, simplified_name, nuts3_code,
+                                   type, parent_code, simplified_name, nuts1_code, nuts3_code,
                                    municipality_count, parish_count)
             VALUES (?, ?, ST_Transform(ST_GeomFromWKB(?, ?), 4326),
-                    ?, ?, ?, ?, ?, ?, ?, ?)
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (code) DO UPDATE SET
                 name = EXCLUDED.name,
                 geometry = CASE
@@ -48,6 +48,7 @@ public class CaopGeoUnitWriter {
                 type = EXCLUDED.type,
                 parent_code = EXCLUDED.parent_code,
                 simplified_name = EXCLUDED.simplified_name,
+                nuts1_code = EXCLUDED.nuts1_code,
                 nuts3_code = EXCLUDED.nuts3_code,
                 municipality_count = COALESCE(geo_units.municipality_count, 0)
                                      + COALESCE(EXCLUDED.municipality_count, 0),
@@ -56,24 +57,24 @@ public class CaopGeoUnitWriter {
             """;
 
     private static final String INSERT_BORDER_SQL = """
-            INSERT INTO border_segments (geometry, level, line_type, ea_right, ea_left, length_km)
-            VALUES (ST_Transform(ST_GeomFromWKB(?, ?), 4326), ?, ?, ?, ?, ?)
+            INSERT INTO border_segments (geometry, level, line_type, ea_right, ea_left,
+                                          pais, estado_limite_admin, length_km)
+            VALUES (ST_Transform(ST_GeomFromWKB(?, ?), 4326), ?, ?, ?, ?, ?, ?, ?)
             """;
 
     private final JdbcTemplate jdbcTemplate;
 
     public void clearAuxData() {
         jdbcTemplate.update("DELETE FROM geo_unit_adjacency");
+        jdbcTemplate.update("DELETE FROM border_segment_precisions");
         jdbcTemplate.update("DELETE FROM border_segments");
     }
 
     /**
-     * Empties {@code geo_units} ahead of a full rebuild. Safe to call: no other table holds a
-     * foreign key to it - {@code geo_unit_precisions} and {@code geo_unit_adjacency} store the
-     * code as a plain column and are regenerated after the import. Clearing first lets the
-     * merge-mode upsert sum attributes without double-counting across re-imports.
+     * Empties {@code geo_unit_precisions} and {@code geo_units} ahead of a full rebuild.
      */
     public void clearGeoUnits() {
+        jdbcTemplate.update("DELETE FROM geo_unit_precisions");
         jdbcTemplate.update("DELETE FROM geo_units");
     }
 
@@ -94,9 +95,10 @@ public class CaopGeoUnitWriter {
             ps.setInt(7, u.getType().getValue());
             ps.setString(8, u.getParent() != null ? u.getParent().getCode() : null);
             ps.setString(9, u.getSimplifiedName());
-            ps.setString(10, u.getNuts3Code());
-            ps.setObject(11, u.getMunicipalityCount());
-            ps.setObject(12, u.getParishCount());
+            ps.setString(10, u.getNuts1Code());
+            ps.setString(11, u.getNuts3Code());
+            ps.setObject(12, u.getMunicipalityCount());
+            ps.setObject(13, u.getParishCount());
         });
     }
 
@@ -109,7 +111,9 @@ public class CaopGeoUnitWriter {
             ps.setString(4, b.getLineType());
             ps.setString(5, b.getEaRight());
             ps.setString(6, b.getEaLeft());
-            ps.setObject(7, b.getLengthKm());
+            ps.setString(7, b.getPais());
+            ps.setString(8, b.getEstadoLimiteAdmin());
+            ps.setObject(9, b.getLengthKm());
         });
     }
 

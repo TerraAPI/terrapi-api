@@ -7,7 +7,7 @@ spring:
     password: ${DB_PASSWORD:terrapi}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
 
 terrapi:
   cors:

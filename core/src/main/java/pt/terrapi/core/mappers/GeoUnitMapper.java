@@ -14,12 +14,14 @@ public final class GeoUnitMapper {
 
     public static GeoUnitDetailsDto toDetailedDto(GeoUnit entity) {
         Point point = entity.getRepresentativePoint();
+        Point adminCenter = entity.getAdministrativeCenter();
         return new GeoUnitDetailsDto(
                 entity.getCode(),
                 entity.getName(),
                 entity.getSimplifiedName(),
                 entity.getType(),
                 entity.getParent() != null ? toMinimalDto(entity.getParent()) : null,
+                entity.getNuts1Code(),
                 entity.getNuts3Code(),
                 entity.getAreaHa(),
                 entity.getPerimeterKm(),
@@ -27,7 +29,9 @@ public final class GeoUnitMapper {
                 entity.getParishCount(),
                 entity.getCoastlineKm(),
                 point != null ? point.getX() : null,
-                point != null ? point.getY() : null
+                point != null ? point.getY() : null,
+                adminCenter != null ? adminCenter.getX() : null,
+                adminCenter != null ? adminCenter.getY() : null
         );
     }
 

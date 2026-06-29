@@ -21,7 +21,7 @@ import pt.terrapi.core.enums.GeoUnitType;
 public class GeoUnit {
 
     @Id
-    @Column(length = 6, nullable = false, unique = true)
+    @Column(length = 8, nullable = false, unique = true)
     private String code;
 
     @Column(nullable = false)
@@ -54,6 +54,12 @@ public class GeoUnit {
     private String simplifiedName;
 
     /**
+     * NUTS 1 code - populated for {@link GeoUnitType#DISTRICT} and {@link GeoUnitType#ISLAND} units.
+     */
+    @Column(length = 4)
+    private String nuts1Code;
+
+    /**
      * NUTS 3 code - only populated for {@link GeoUnitType#MUNICIPALITY} units.
      */
     @Column(length = 5)
@@ -64,6 +70,13 @@ public class GeoUnit {
      */
     @Column(columnDefinition = "geometry(Point, 4326)")
     private Point representativePoint;
+
+    /**
+     * Actual administrative seat location (e.g. town hall, parish council).
+     * Nullable — not populated by the GPKG import; requires a separate seat dataset.
+     */
+    @Column(columnDefinition = "geometry(Point, 4326)")
+    private Point administrativeCenter;
 
     /**
      * Number of child municipalities (DISTRICT, ISLAND, NUTS levels); null for leaf types.

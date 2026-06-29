@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import pt.terrapi.core.entities.BorderSegment;
 import pt.terrapi.core.entities.GeoUnit;
+import pt.terrapi.core.enums.GeoUnitType;
 import pt.terrapi.core.enums.SourceDataset;
 import pt.terrapi.core.mappers.RowMappers;
 
@@ -41,6 +42,8 @@ public class CaopGpkgReader {
             List<GeoUnit> units = new ArrayList<>();
             readStatistical(conn, prefix, units);
             readAdministrative(conn, prefix, units);
+            resolveParentsByCode(units);
+            addAutonomousRegionParents(units, prefix);
             List<BorderSegment> borders = readBorders(conn, prefix);
 
             return new GpkgData(sourceEpsg, units, borders);
@@ -73,6 +76,66 @@ public class CaopGpkgReader {
                 rs -> RowMappers.GeoUnitMapper.mapRowParish(rs, municipalities));
     }
 
+    private void resolveParentsByCode(List<GeoUnit> units) {
+        Map<String, GeoUnit> byCode = new HashMap<>();
+        for (GeoUnit u : units) {
+            byCode.put(u.getCode(), u);
+        }
+        for (GeoUnit u : units) {
+            if (u.getParent() != null || u.getCode() == null) {
+                continue;
+            }
+            GeoUnit resolved = null;
+            switch (u.getType()) {
+                case MUNICIPALITY -> {
+                    String districtCode = u.getCode().substring(0, 2);
+                    resolved = byCode.get(districtCode);
+                }
+                case PARISH -> {
+                    String muniCode = u.getCode().substring(0, 4);
+                    resolved = byCode.get(muniCode);
+                }
+                case NUTS2 -> {
+                    if (u.getCode().length() >= 3) {
+                        resolved = byCode.get(u.getCode().substring(0, 3));
+                    }
+                }
+                case NUTS3 -> {
+                    if (u.getCode().length() >= 4) {
+                        resolved = byCode.get(u.getCode().substring(0, 4));
+                    }
+                }
+            }
+            if (resolved != null) {
+                log.warn("  Parent resolved by code-prefix fallback: {} ({}) -> {} ({})",
+                        u.getCode(), u.getName(), resolved.getCode(), resolved.getName());
+                u.setParent(resolved);
+            }
+        }
+    }
+
+    private void addAutonomousRegionParents(List<GeoUnit> units, String prefix) {
+        if (!prefix.startsWith("ram") && !prefix.startsWith("raa")) {
+            return;
+        }
+        boolean isMadeira = prefix.startsWith("ram");
+        String code = isMadeira ? "PT-AR-M" : "PT-AR-A";
+        String name = isMadeira ? "Região Autónoma da Madeira" : "Região Autónoma dos Açores";
+
+        GeoUnit region = new GeoUnit();
+        region.setCode(code);
+        region.setName(name);
+        region.setType(GeoUnitType.AUTONOMOUS_REGION);
+        units.add(region);
+
+        for (GeoUnit u : units) {
+            if (u.getType() == GeoUnitType.ISLAND && u.getParent() == null) {
+                u.setParent(region);
+            }
+        }
+        log.info("  Added synthetic AUTONOMOUS_REGION parent: {} ({})", name, code);
+    }
+
     /**
      * Reads one administrative level, appends the units to {@code out}, and returns a name→unit
      * map so the next (child) level can resolve its parent.
@@ -102,7 +165,8 @@ public class CaopGpkgReader {
         }
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT geom, ea_direita, ea_esquerda, "
-                     + "nivel_limite_admin, significado_linha, comprimento_km FROM " + table)) {
+                     + "nivel_limite_admin, significado_linha, paises, estado_limite_admin, "
+                     + "comprimento_km FROM " + table)) {
             while (rs.next()) {
                 borders.add(RowMappers.mapBorderSegment(rs));
             }
@@ -112,27 +176,18 @@ public class CaopGpkgReader {
     }
 
     /**
-     * Border level ({@code nivel_limite_admin}) and line type ({@code significado_linha}) are
-     * parsed with text heuristics in {@link RowMappers}; a change in the source wording would make
-     * them silently mis-classify. Warn loudly on the tell-tale signs: any unparseable level, or a
-     * dataset that produced zero COAST/WATER arcs (every CAOP region touches the sea).
+     * Warn when a dataset produces zero COAST/WATER arcs (every CAOP region touches the sea).
      */
     private static void warnOnSuspectBorderClassification(String table, List<BorderSegment> borders) {
         if (borders.isEmpty()) {
             return;
         }
-        long unparseableLevel = borders.stream().filter(b -> b.getLevel() == null).count();
         long coastalOrWater = borders.stream()
                 .filter(b -> "COAST".equals(b.getLineType()) || "WATER".equals(b.getLineType()))
                 .count();
-        if (unparseableLevel > 0) {
-            log.warn("{}: {}/{} border arcs have an unparseable admin level - check "
-                    + "nivel_limite_admin wording", table, unparseableLevel, borders.size());
-        }
         if (coastalOrWater == 0) {
             log.warn("{}: 0 of {} border arcs classified as COAST/WATER - significado_linha wording "
-                    + "may have changed and parseLineType silently defaulted everything to LAND",
-                    table, borders.size());
+                    + "may have changed", table, borders.size());
         }
     }
 

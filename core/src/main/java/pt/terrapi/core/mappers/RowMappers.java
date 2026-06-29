@@ -38,26 +38,40 @@ public final class RowMappers {
         b.setEaLeft(rs.getString("ea_esquerda"));
         b.setLevel(parseLevel(rs.getString("nivel_limite_admin")));
         b.setLineType(parseLineType(rs.getString("significado_linha")));
+        b.setPais(rs.getString("paises"));
+        b.setEstadoLimiteAdmin(rs.getString("estado_limite_admin"));
         double len = rs.getDouble("comprimento_km");
         b.setLengthKm(rs.wasNull() ? null : len);
         return b;
     }
 
     private static Integer parseLevel(String nivel) {
-        if (nivel == null) return null;
-        for (int i = 0; i < nivel.length(); i++) {
-            if (Character.isDigit(nivel.charAt(i))) {
-                return Character.getNumericValue(nivel.charAt(i));
+        if (nivel == null || nivel.isBlank()) return null;
+        String lower = nivel.toLowerCase();
+        for (int i = 0; i < lower.length(); i++) {
+            if (Character.isDigit(lower.charAt(i))) {
+                return Character.getNumericValue(lower.charAt(i));
             }
         }
-        return null;
+        if (lower.contains("não") || lower.contains("not applicable")) {
+            return null;
+        }
+        throw new IllegalArgumentException(
+                "Unrecognized nivel_limite_admin value: \"" + nivel
+                + "\" — expected a Portuguese ordinal (\"1.ª Ordem\") or \"Não Aplicável\". "
+                + "Check the GPKG export wording.");
     }
 
-    private static String parseLineType(String significado) {
-        if (significado == null) return "LAND";
-        if (significado.contains("Costa")) return "COAST";
-        if (significado.contains("gua")) return "WATER";
-        return "LAND";
+    static String parseLineType(String significado) {
+        if (significado == null || significado.isBlank()) return "LAND";
+        String lower = significado.toLowerCase();
+        if (lower.contains("costa")) return "COAST";
+        if (lower.contains("água") || lower.contains("agua")) return "WATER";
+        if (lower.contains("terra") || lower.contains("land")) return "LAND";
+        throw new IllegalArgumentException(
+                "Unrecognized significado_linha value: \"" + significado
+                + "\" — expected \"Limite e Costa\", \"Costa\", \"Limite de Terra\", "
+                + "or \"Limite de Água\". Check the GPKG export wording.");
     }
 
     private static void setGeo(GeoUnit e, ResultSet rs) throws SQLException {
@@ -112,7 +126,7 @@ public final class RowMappers {
         private GeoUnitMapper() {}
 
         public static String[] districtColumns() {
-            return new String[]{"dt", "distrito", "n_municipios", "n_freguesias"};
+            return new String[]{"dt", "distrito", "nuts1_cod", "n_municipios", "n_freguesias"};
         }
 
         public static String[] municipalityColumns() {
@@ -141,6 +155,7 @@ public final class RowMappers {
                     ? GeoUnitType.ISLAND : GeoUnitType.DISTRICT);
             u.setCode(rs.getString("dt"));
             u.setName(rs.getString("distrito"));
+            u.setNuts1Code(nutsCode(rs.getString("nuts1_cod")));
             u.setMunicipalityCount(nullableInt(rs, "n_municipios"));
             u.setParishCount(nullableInt(rs, "n_freguesias"));
             setGeo(u, rs);

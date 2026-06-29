@@ -52,6 +52,14 @@ public class BorderSegment {
     @Column(name = "ea_left", length = 8)
     private String eaLeft;
 
+    /** Country on the other side: "Portugal" (internal border) or "Portugal/Espanha" (Spain border). */
+    @Column(length = 100)
+    private String pais;
+
+    /** Administrative boundary status: "Definido", "Por Acordar", "Não Acordado", etc. */
+    @Column(name = "estado_limite_admin", length = 100)
+    private String estadoLimiteAdmin;
+
     @Column(name = "length_km")
     private Double lengthKm;
 }

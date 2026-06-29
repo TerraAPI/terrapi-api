@@ -31,7 +31,7 @@ public class GeoUnitPrecision {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "geo_unit_code", length = 6, nullable = false)
+    @Column(name = "geo_unit_code", length = 8, nullable = false)
     private String geoUnitCode;
 
     @Column(nullable = false)

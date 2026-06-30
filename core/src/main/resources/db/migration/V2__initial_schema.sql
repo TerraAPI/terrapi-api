@@ -1,6 +1,4 @@
 -- Core geo schema. Column types/lengths/nullability mirror the JPA entities
--- (pt.terrapi.core.entities, pt.terrapi.pipeline.entities) so Hibernate ddl-auto=validate
--- passes. Indexes live in V3, CHECK constraints in V4.
 
 CREATE TABLE geo_units (
     code                  VARCHAR(8)              NOT NULL,
@@ -78,7 +76,6 @@ CREATE TABLE precision_generations (
     CONSTRAINT precision_generations_pkey PRIMARY KEY (generation_id)
 );
 
--- Derived adjacency helper (written by CaopGeoDerivationService, not a JPA entity).
 CREATE TABLE geo_unit_adjacency (
     code           VARCHAR(8) NOT NULL,
     neighbour_code VARCHAR(8) NOT NULL,

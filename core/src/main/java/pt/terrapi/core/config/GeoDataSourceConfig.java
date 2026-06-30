@@ -26,10 +26,7 @@ import javax.sql.DataSource;
  * Flyway, and any unqualified {@link DataSource} injection resolve to the geo database.
  */
 @Configuration
-@EnableJpaRepositories(
-        basePackages = {"pt.terrapi.core.repository", "pt.terrapi.pipeline.repository"},
-        entityManagerFactoryRef = "entityManagerFactory",
-        transactionManagerRef = "transactionManager")
+@EnableJpaRepositories(basePackages = {"pt.terrapi"})
 public class GeoDataSourceConfig {
 
     @Primary
@@ -51,7 +48,7 @@ public class GeoDataSourceConfig {
                             @Value("${terrapi.flyway.enabled:true}") boolean flywayEnabled) {
         Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
-                .locations("classpath:db/migration/geo")
+                .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .load();
         if (flywayEnabled) {

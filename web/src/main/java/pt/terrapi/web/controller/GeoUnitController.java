@@ -13,9 +13,13 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pt.terrapi.core.dto.BatchGeoUnitRequest;
+import pt.terrapi.core.dto.BatchGeoUnitResult;
 import pt.terrapi.core.dto.GeoUnitDetailsDto;
 import pt.terrapi.core.dto.GeoUnitSummaryDto;
 import pt.terrapi.core.dto.PagedResponse;
@@ -50,6 +54,13 @@ public class GeoUnitController {
         return geoUnitQueryService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/batch")
+    @Operation(summary = "Fetch multiple geographic units by code in a single request (max 100)")
+    public ResponseEntity<List<BatchGeoUnitResult>> batchFindByIds(
+            @RequestBody BatchGeoUnitRequest request) {
+        return ResponseEntity.ok(geoUnitQueryService.batchFindByIds(request));
     }
 
     @GetMapping("/{id}/children")

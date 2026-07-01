@@ -1,5 +1,4 @@
 -- All indexes for the geo schema: GiST spatial indexes plus the btree lookup indexes
--- previously declared via JPA @Index / created by SchemaInitializer.
 
 -- geo_units
 CREATE INDEX idx_geo_units_geometry    ON geo_units USING GIST (geometry);

@@ -2,13 +2,17 @@ package pt.terrapi.web.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import pt.terrapi.core.dto.BatchGeoUnitRequest;
+import pt.terrapi.core.dto.BatchGeoUnitResult;
 import pt.terrapi.core.dto.BatchReverseGeocodeRequest;
 import pt.terrapi.core.dto.BatchReverseGeocodeResult;
 import pt.terrapi.core.dto.ContainsResponse;
@@ -27,6 +31,8 @@ import pt.terrapi.core.repository.GeoUnitRepository;
 @Transactional(readOnly = true)
 public class GeoUnitQueryService {
 
+    private static final int BATCH_SIZE_LIMIT = 100;
+
     private final GeoUnitRepository geoUnitRepository;
 
     public PagedResponse<GeoUnitSummaryDto> findAll(Pageable pageable) {
@@ -40,6 +46,28 @@ public class GeoUnitQueryService {
     public Optional<GeoUnitDetailsDto> findById(String code) {
         return geoUnitRepository.findById(code)
                 .map(GeoUnitMapper::toDetailedDto);
+    }
+
+    public List<BatchGeoUnitResult> batchFindByIds(BatchGeoUnitRequest request) {
+        List<String> codes = request.codes() != null ? request.codes() : List.of();
+        if (codes.size() > BATCH_SIZE_LIMIT) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Too many codes: " + codes.size() + ". Maximum is " + BATCH_SIZE_LIMIT);
+        }
+        if (codes.isEmpty()) {
+            return List.of();
+        }
+        List<String> distinctCodes = codes.stream().distinct().toList();
+        Map<String, GeoUnitSummaryDto> found = geoUnitRepository.findSummaryListByCodes(distinctCodes)
+                .stream()
+                .map(GeoUnitMapper::toSummaryDto)
+                .collect(Collectors.toMap(GeoUnitSummaryDto::code, u -> u));
+        List<BatchGeoUnitResult> results = new ArrayList<>(codes.size());
+        for (String code : codes) {
+            GeoUnitSummaryDto unit = found.get(code);
+            results.add(new BatchGeoUnitResult(code, unit != null, unit));
+        }
+        return results;
     }
 
     public List<GeoUnitSummaryDto> findChildren(String code) {

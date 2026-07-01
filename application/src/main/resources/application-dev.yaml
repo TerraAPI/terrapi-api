@@ -1,5 +1,4 @@
 # Local development profile (active by default via spring.profiles.default: dev).
-# Localhost / dev-credential defaults; env vars (incl. .env) override these.
 spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5445/terrapi_geo}

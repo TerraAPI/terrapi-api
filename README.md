@@ -67,11 +67,7 @@ The API is now running at **http://localhost:8081**. Swagger UI at **http://loca
 
 ### 3. Import the CAOP data
 
-```bash
-curl -X POST "http://localhost:8081/api/v1/import/caop/caop"
-```
-
-This reads all `.gpkg` files from the `caop/` directory (place your downloaded files there). Alternatively, upload them directly:
+Upload all 4 GPKG files in a single request:
 
 ```bash
 curl -X POST "http://localhost:8081/api/v1/import/caop/upload" \
@@ -80,6 +76,8 @@ curl -X POST "http://localhost:8081/api/v1/import/caop/upload" \
   -F "files=@ArqAcores_GOcidental_CAOP2025.gpkg" \
   -F "files=@ArqAcores_GCentral_GOriental_CAOP2025.gpkg"
 ```
+
+All 4 files must be uploaded together — the import is a full rebuild that merges entities split across files (e.g. the Azores NUTS). There's also a dev-only endpoint `POST /api/v1/import/caop/{folder}` that reads `.gpkg` files from a server-side directory path, useful when running inside an IDE with local files — but the upload endpoint above is what you'd use against a deployed instance.
 
 ### 4. Generate simplified geometries
 
@@ -97,6 +95,16 @@ curl "http://localhost:8081/api/v1/layers/DISTRICT?lod=2"
 
 Returns all 18 mainland districts plus islands as a single GeoJSON FeatureCollection. Drop it into [geojson.io](https://geojson.io) and you'll see Portugal outlined.
 
+### What it looks like
+
+![Layer polygons rendered on a map](docs/img/layers_showcase.png)
+
+*Simplified district and municipality polygons served by `/api/v1/layers`*
+
+![Classified boundary lines](docs/img/borders_showcase.png)
+
+*Classified border line network from `/api/v1/borders` — level (national through parish) and line type (land, coast, water)*
+
 ---
 
 ## API at a glance
@@ -107,11 +115,11 @@ The full API is documented and interactive at `/swagger-ui/index.html`. Here's w
 |---------------------|----------|
 | Get all polygons of a type (e.g. all districts) | `GET /api/v1/layers/{type}?lod=2` |
 | Get boundaries as styled lines | `GET /api/v1/borders?maxLevel=3&lod=2` |
-| Click a point → find which parish it's in | `GET /api/v1/geo/reverse-geocode?lat=...&lon=...` |
+| Click a point, find which parish it's in | `GET /api/v1/geo/reverse-geocode?lat=...&lon=...` |
 | Get one unit's precise boundary | `GET /api/v1/geo/{code}/geometry` |
 | Find what's visible in the current map viewport | `GET /api/v1/geo/within-bbox?minLon=...&maxLon=...` |
 | Find nearby units around a point | `GET /api/v1/geo/within?lat=...&lon=...&radiusKm=...` |
-| Look up a unit by code | `GET /api/v1/geo-units/010103` |
+| Look up a unit by code | `GET /api/v1/geo-units/{code}` |
 | Get a unit's children, parent, neighbours | `GET /api/v1/geo-units/{code}/children` |
 | Check if a point is inside a specific unit | `GET /api/v1/geo/contains?code=...&lat=...&lon=...` |
 
